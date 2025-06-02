@@ -1,0 +1,48 @@
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Store } from '../store/store.entity';
+
+@Entity('DeliveryHistory')
+export class DeliveryHistory {
+    @PrimaryGeneratedColumn()
+    id: number;
+
+    @Column({ type: 'timestamp' })
+    startDateTime: Date;
+
+    @Column({ type: 'timestamp' })
+    endDateTime: Date;
+
+    //Start of Store as receiver relationship
+    @ManyToOne(
+        () => Store, (store) => store.receivedDeliveries, {
+        nullable: true,
+        onDelete: 'SET NULL',
+    })
+    @JoinColumn({ name: 'receiverId', referencedColumnName: 'id' })
+    receiverStore: Store;
+    //End of Store as receiver relationship
+
+
+    //Start of Store as sender relationship
+    @ManyToOne(
+        () => Store, (store) => store.sentDeliveries, {
+        nullable: true,
+        onDelete: 'SET NULL',
+    })
+    @JoinColumn({ name: 'senderId', referencedColumnName: 'id' })
+    senderStore: Store;
+    // End of Store as sender relationship
+
+
+    @Column({ type: 'boolean' })
+    transactionStatus: boolean;
+
+    @Column({ type: 'text', enum: ['send', 'receive'] })
+    transactionType: string;
+
+    @Column({ type: 'jsonb' })
+    receiverList: object;
+
+    @Column({ type: 'text', nullable: true })
+    errorMessage: string;
+}
