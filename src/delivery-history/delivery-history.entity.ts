@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Store } from '../store/store.entity';
+import {ErrorDetail} from '../common/interfaces/error-detail.interface';
 
 @Entity('DeliveryHistory')
 export class DeliveryHistory {
@@ -43,6 +44,6 @@ export class DeliveryHistory {
     @Column({ type: 'jsonb' })
     receiverList: object;
 
-    @Column({ type: 'text', nullable: true })
-    errorMessage: string;
+    @Column({ type: 'jsonb', nullable: true, default: [] }) 
+    errors: ErrorDetail[]; 
 }

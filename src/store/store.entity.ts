@@ -10,7 +10,7 @@ import {
 } from 'typeorm';
 import { Admin } from '../admin/admin.entity';
 import { DeliveryHistory } from '../delivery-history/delivery-history.entity';
-import { LatestDelivery } from '../delivery-history/latest-delivery.entity';
+import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 
 @Entity('Store')
 @Index(['storeName', 'storeCode'], { unique: true })
@@ -71,19 +71,19 @@ export class Store {
 
   @OneToMany(
     () => DeliveryHistory, (deliveryHistory) => deliveryHistory.receiverStore, {
-      eager: false, // Don't load automatically by default
-    })
+    eager: false, // Don't load automatically by default
+  })
   receivedDeliveries: DeliveryHistory[];
 
   @OneToMany(
-    () => DeliveryHistory, (deliveryHistory) => deliveryHistory.senderStore,{
-      eager: false, // Don't load automatically by default
-    })
+    () => DeliveryHistory, (deliveryHistory) => deliveryHistory.senderStore, {
+    eager: false, // Don't load automatically by default
+  })
   sentDeliveries: DeliveryHistory[];
 
   @OneToOne(
-    () => LatestDelivery, (latestDelivery) => latestDelivery.store,{
-      eager: false, // Don't load automatically by default
-    })
+    () => LatestDelivery, (latestDelivery) => latestDelivery.store, {
+    eager: false, // Don't load automatically by default
+  })
   latestDelivery: LatestDelivery;
 }

@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import { AdminModule } from './admin/admin.module';
 import { StoreModule } from './store/store.module';
 import { DeliveryHistoryModule } from './delivery-history/delivery-history.module';
+import { LatestDeliveryModule } from './latest-delivery/latest-delivery.module';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { DeliveryHistoryModule } from './delivery-history/delivery-history.modul
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),
     // Import application modules
-    AdminModule, StoreModule, DeliveryHistoryModule
+    AdminModule, StoreModule, DeliveryHistoryModule, LatestDeliveryModule
   ],
   controllers: [AppController],
   providers: [AppService],

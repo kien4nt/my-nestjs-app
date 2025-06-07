@@ -13,13 +13,23 @@ import { Store } from './store.entity';
 export class StoreController {
     constructor(private readonly StoreService: StoreService) { }
 
-    @Get('groups/:groupDisplayId/shops')
+
+    @Get('groups/:storeId/shops')
     @ApiOperation({ summary: 'Retrieve all child shops of a specific parent group' })
-    @ApiParam({ name: 'groupDisplayId', description: 'The display ID of the parent group', type: String })
+    @ApiParam({ name: 'storeId', description: 'The display ID of the parent group', type: String })
     @ApiResponse({ status: 200, description: 'List of child shops.', type: [Store] })
     @ApiResponse({ status: 404, description: 'Group not found.' })
-    findChildShopsOfThisGroup(@Param('groupDisplayId') groupDisplayId: string): Promise<Store[]> {
-        return this.StoreService.findChildShopsOfThisGroup(groupDisplayId);
+    findChildShopsOfThisGroup(@Param('storeId') storeId: string): Promise<Store[]> {
+        return this.StoreService.findChildShopsOfThisGroup(storeId);
+    }
+
+    @Get('groups/:storeId/deliverable')
+    @ApiOperation({ summary: 'Retrieve all stores which are deliverable from this group' })
+    @ApiParam({ name: 'storeId', description: 'The display ID of the group', type: String })
+    @ApiResponse({ status: 200, description: 'List of deliverable stores.', type: [Store] })
+    @ApiResponse({ status: 404, description: 'Group not found.' })
+    findDeliverableStores(@Param('storeId') storeId: string): Promise<Store[]> {
+        return this.StoreService.findStoresUnderTheSameAdminAsThisGroup(storeId);
     }
 
     @Get('groups')
@@ -30,13 +40,13 @@ export class StoreController {
     }
 
 
-    @Get(':storeDisplayId')
+    @Get(':storeId')
     @ApiOperation({ summary: 'Retrieve a single store by its display ID' })
-    @ApiParam({ name: 'storeDisplayId', description: 'The display ID of the store', type: String })
+    @ApiParam({ name: 'storeId', description: 'The display ID of the store', type: String })
     @ApiResponse({ status: 200, description: 'The found store.', type: Store })
     @ApiResponse({ status: 404, description: 'Store not found.' })
-    findOne(@Param('storeDisplayId') storeDisplayId: string): Promise<Store> {
-        return this.StoreService.findStoreByDisplayId(storeDisplayId);
+    findOne(@Param('storeId') storeId: string): Promise<Store> {
+        return this.StoreService.findStoreByStoreId(storeId);
     }
 
 

@@ -1,31 +1,26 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Store } from './store.entity'; 
-// import {Admin} from '../admin/admin.entity'
+import { Store } from './store.entity';
 
 @Injectable()
 export class StoreService {
   constructor(
     @InjectRepository(Store)
     private storeRepository: Repository<Store>,
-    // @InjectRepository(Admin)
-    // private adminRepository: Repository<Admin>,
-  ) {}
+  ) { }
 
 
   //Find All Stores
   async findAllStores(): Promise<Store[]> {
-    return await this.storeRepository.find({
-      relations: ['admin'],
-    });
+    return await this.storeRepository.find();
   }
 
-  //Find A Store By its Id
+  //Find A Store By its PK Id
   async findOneStoreById(id: number): Promise<Store> {
     const store = await this.storeRepository.findOne({
       where: { id },
-      relations: ['admin', 'parentGroup', 'childShops'],
+      relations: ['parentGroup', 'childShops'],
     });
     if (!store) {
       throw new NotFoundException(`Store not found.`);
@@ -34,10 +29,10 @@ export class StoreService {
   }
 
   //Find A Store By its Display Id
-  async findStoreByDisplayId(storeId: string): Promise<Store> {
+  async findStoreByStoreId(storeId: string): Promise<Store> {
     const store = await this.storeRepository.findOne({
       where: { storeId },
-      relations: ['admin', 'parentGroup', 'childShops'],
+      relations: ['parentGroup', 'childShops'],
     });
     if (!store) {
       throw new NotFoundException(`Store ${storeId} not found.`);
@@ -45,15 +40,14 @@ export class StoreService {
     return store;
   }
 
-  //Find All Stores with type 'group'
+  //Find Stores with type 'group'
   async filterGroupOnlyList(): Promise<Store[]> {
     return await this.storeRepository.find({
-      where: { storeType: 'group' },
-      relations: ['admin'],
+      where: { storeType: 'group' }
     });
   }
 
-  //Find All Shops Managed By This Group
+  //Find Shops Managed By This Group
   async findChildShopsOfThisGroup(storeId: string): Promise<Store[]> {
     const group = await this.storeRepository.findOne({ where: { storeId, storeType: 'group' } });
     if (!group) {
@@ -61,17 +55,22 @@ export class StoreService {
     }
     return await this.storeRepository.find({
       where: { parentGroup: { id: group.id } },
-      relations: ['admin','parentGroup'],
+      relations: ['parentGroup'],
     });
   }
 
-  //Find All Stores Under This Admin
-  async findStoresOfThisAdmin(adminId: number): Promise<Store[]> { 
+  //Find Stores Under The Same Admin As This Group
+  async findStoresUnderTheSameAdminAsThisGroup(storeId: string): Promise<Store[]> {
+    const group = await this.storeRepository.findOne({ where: { storeId, storeType: 'group' } });
+
+    if (!group) {
+      throw new NotFoundException(`Group ${storeId} not found`);
+    }
+
     return await this.storeRepository.find({
-      where: { admin: {id : adminId} },
-      relations: ['admin'],
+      where: { admin: { id: group.admin.id } },
+      relations: ['admin']
     });
   }
 
-  
 }

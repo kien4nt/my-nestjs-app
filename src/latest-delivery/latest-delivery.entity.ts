@@ -1,5 +1,7 @@
 import { Entity, PrimaryColumn, Column, OneToOne, JoinColumn } from 'typeorm';
 import { Store } from '../store/store.entity';
+import {ErrorDetail} from '../common/interfaces/error-detail.interface';
+
 
 @Entity('LatestDelivery')
 export class LatestDelivery {
@@ -31,6 +33,6 @@ export class LatestDelivery {
     @Column({ type: 'jsonb' })
     receiverList: object;
 
-    @Column({ type: 'text', nullable: true })
-    errorMessage: string;
+    @Column({ type: 'jsonb', nullable: true, default: [] })
+    errors: ErrorDetail[];
 }
