@@ -1,8 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Store } from '../store/store.entity';
 import {ErrorDetail} from '../common/interfaces/error-detail.interface';
 
-@Entity('DeliveryHistory')
+@Entity('delivery_history')
 export class DeliveryHistory {
     @PrimaryGeneratedColumn()
     id: number;

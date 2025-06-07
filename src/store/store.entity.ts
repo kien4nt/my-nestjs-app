@@ -12,7 +12,7 @@ import { Admin } from '../admin/admin.entity';
 import { DeliveryHistory } from '../delivery-history/delivery-history.entity';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 
-@Entity('Store')
+@Entity('store')
 @Index(['storeName', 'storeCode'], { unique: true })
 export class Store {
   @PrimaryGeneratedColumn()

@@ -26,7 +26,9 @@ import { LatestDeliveryModule } from './latest-delivery/latest-delivery.module';
         password: configService.get<string>('DATABASE_PASSWORD'),
         database: configService.get<string>('DATABASE_NAME'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: true, // !!! DANGER: Use migrations in production !!!
+        migrations: [__dirname + '/migrations/*{.ts,.js}'],
+        synchronize: false,         // Turn off sync!
+        migrationsRun: true,        // Auto-run migrations on app start
       }),
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),

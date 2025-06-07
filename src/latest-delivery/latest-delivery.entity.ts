@@ -3,7 +3,7 @@ import { Store } from '../store/store.entity';
 import {ErrorDetail} from '../common/interfaces/error-detail.interface';
 
 
-@Entity('LatestDelivery')
+@Entity('latest_delivery')
 export class LatestDelivery {
     // Since storeIdPK is the primary key and also references Store's ID,
     // we use @PrimaryColumn and @OneToOne with @JoinColumn.
