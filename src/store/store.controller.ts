@@ -1,11 +1,16 @@
 import {
+    Body,
     Controller,
     Get,
+    HttpException,
+    HttpStatus,
     Param,
+    Post,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { StoreService } from './store.service';
 import { Store } from './store.entity';
+import { CreateStoreDto } from './dto/create-store.dto';
 
 
 @ApiTags('stores')
@@ -48,6 +53,29 @@ export class StoreController {
     findOne(@Param('storeId') storeId: string): Promise<Store> {
         return this.StoreService.findStoreByStoreId(storeId);
     }
+
+    @Post()
+        @ApiOperation({ summary: 'Create a new store' })
+        @ApiBody({
+            description: 'Store data',
+            type: CreateStoreDto
+        })
+        @ApiResponse({
+            status: 201,
+            description: 'The store has been successfully created.',
+            type: Store
+        })
+        @ApiResponse({
+            status: 400,
+            description: 'Bad request. Validation failed or other error.'
+        })
+        async createStore(@Body() storeData: CreateStoreDto): Promise<Store> {
+            try {
+                return await this.StoreService.createStoreWithRetry(storeData);
+            } catch (error) {
+                throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
+            }
+        }
 
 
     @Get()

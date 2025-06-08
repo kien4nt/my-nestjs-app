@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Store } from './store.entity';
+import { CreateStoreDto } from './dto/create-store.dto';
+import {v4 as uuidv4} from 'uuid';
 
 @Injectable()
 export class StoreService {
@@ -71,6 +73,36 @@ export class StoreService {
       where: { admin: { id: group.admin.id } },
       relations: ['admin']
     });
+  }
+
+  // Create Store with UUID retry logic
+  async createStoreWithRetry(storeData: CreateStoreDto, maxRetries = 5): Promise<Store> {
+    let attempts = 0;
+    while (attempts < maxRetries) {
+      attempts++;
+
+      try {
+        // Generate new UUID for storeId
+        const store = this.storeRepository.create({
+          ...storeData,
+          storeId: uuidv4(),
+          storeNameCode : storeData.storeName + storeData.storeCode,
+        });
+
+        return await this.storeRepository.save(store);
+      } catch (error) {
+        // Check if unique violation on storeId UUID column
+        if (error.code === '23505' && error.detail && error.detail.includes('storeId')) {
+          // UUID collision detected, retry
+          console.warn(`UUID collision detected on attempt ${attempts}, retrying...`);
+          continue;
+        } else {
+          // Other errors bubble up
+          throw new InternalServerErrorException(error.message);
+        }
+      }
+    }
+    throw new InternalServerErrorException('Failed to create Store after multiple UUID retries.');
   }
 
 }
