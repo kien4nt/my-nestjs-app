@@ -3,10 +3,14 @@ import {
     Get,
     Param,
     NotFoundException,
+    Put,
+    ParseIntPipe,
+    Body,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { LatestDeliveryService } from './latest-delivery.service';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
+import { UpsertLatestDeliveryDto } from './dto/upsert-latest-delivery.dto';
 
 @ApiTags('latest-delivery')
 @Controller('latest-delivery')
@@ -22,7 +26,16 @@ export class LatestDeliveryController {
     @ApiResponse({ status: 404, description: 'Delivery should be canceled.', type: Boolean })
     async checkDeliveryProceedStatus(@Param('storeId') storeId: string)
         : Promise<boolean> {
-        return this.LatestDeliveryService.checkDeliverable(storeId);
+        return await this.LatestDeliveryService.checkDeliverable(storeId);
     }
+
+    // @Put(':storeIdPK')
+    // @ApiOperation({ summary: 'Upsert latest delivery record for a store' })
+    // @ApiParam({ name: 'storeIdPK', type: Number, description: 'Store ID (Primary Key)' })
+    // @ApiResponse({ status: 200, description: 'Latest delivery record upserted.' })
+    // @ApiBody({ type: UpsertLatestDeliveryDto })
+    // async upsert(@Param('storeIdPK', ParseIntPipe) storeIdPK: number, @Body() dto: UpsertLatestDeliveryDto) {
+    //     return this.LatestDeliveryService.upsertLatest(storeIdPK, dto);
+    // }
 
 }

@@ -28,7 +28,7 @@ import { LatestDeliveryModule } from './latest-delivery/latest-delivery.module';
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
         synchronize: false,         // Turn off sync!
-        migrationsRun: true,        // Auto-run migrations on app start
+        migrationsRun: false,        // Auto-run migrations on app start
       }),
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),

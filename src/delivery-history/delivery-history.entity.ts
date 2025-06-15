@@ -14,6 +14,7 @@ export class DeliveryHistory {
     endDateTime: Date;
 
     //Start of Store as receiver relationship
+    @Index()
     @ManyToOne(
         () => Store, (store) => store.receivedDeliveries, {
         nullable: true,
@@ -41,7 +42,7 @@ export class DeliveryHistory {
     @Column({ type: 'text', enum: ['send', 'receive'] })
     transactionType: string;
 
-    @Column({ type: 'jsonb' })
+    @Column({ type: 'jsonb',nullable: true})
     receiverList: object;
 
     @Column({ type: 'jsonb', nullable: true, default: [] }) 

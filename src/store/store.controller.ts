@@ -24,65 +24,68 @@ export class StoreController {
     @ApiParam({ name: 'storeId', description: 'The display ID of the parent group', type: String })
     @ApiResponse({ status: 200, description: 'List of child shops.', type: [Store] })
     @ApiResponse({ status: 404, description: 'Group not found.' })
-    findChildShopsOfThisGroup(@Param('storeId') storeId: string): Promise<Store[]> {
-        return this.StoreService.findChildShopsOfThisGroup(storeId);
+    async findChildShopsOfThisGroup(@Param('storeId') storeId: string): Promise<Store[]> {
+        return await this.StoreService.findChildShopsOfThisGroup(storeId);
     }
 
-    @Get('groups/:storeId/deliverable')
-    @ApiOperation({ summary: 'Retrieve all stores which are deliverable from this group' })
+    @Get('groups/:storeId/admin')
+    @ApiOperation({ summary: 'Retrieve all stores which are under the same admin as this group' })
     @ApiParam({ name: 'storeId', description: 'The display ID of the group', type: String })
-    @ApiResponse({ status: 200, description: 'List of deliverable stores.', type: [Store] })
+    @ApiResponse({
+        status: 200,
+        description: 'List of stores which are under the same admin as this group',
+        type: [Store]
+    })
     @ApiResponse({ status: 404, description: 'Group not found.' })
-    findDeliverableStores(@Param('storeId') storeId: string): Promise<Store[]> {
-        return this.StoreService.findStoresUnderTheSameAdminAsThisGroup(storeId);
+    async findDeliverableStores(@Param('storeId') storeId: string): Promise<Store[]> {
+        return await this.StoreService.findStoresUnderTheSameAdminAsThisGroup(storeId);
     }
 
     @Get('groups')
     @ApiOperation({ summary: 'Retrieve a list of all group-type stores' })
     @ApiResponse({ status: 200, description: 'List of group-type stores.', type: [Store] })
-    filterGroupOnlyList(): Promise<Store[]> {
-        return this.StoreService.filterGroupOnlyList();
+    async filterGroupOnlyList(): Promise<Store[]> {
+        return await this.StoreService.filterGroupOnlyList();
     }
-
 
     @Get(':storeId')
     @ApiOperation({ summary: 'Retrieve a single store by its display ID' })
     @ApiParam({ name: 'storeId', description: 'The display ID of the store', type: String })
     @ApiResponse({ status: 200, description: 'The found store.', type: Store })
     @ApiResponse({ status: 404, description: 'Store not found.' })
-    findOne(@Param('storeId') storeId: string): Promise<Store> {
-        return this.StoreService.findStoreByStoreId(storeId);
+    async findOne(@Param('storeId') storeId: string): Promise<Store> {
+        return await this.StoreService.findStoreByStoreId(storeId);
     }
 
     @Post()
-        @ApiOperation({ summary: 'Create a new store' })
-        @ApiBody({
-            description: 'Store data',
-            type: CreateStoreDto
-        })
-        @ApiResponse({
-            status: 201,
-            description: 'The store has been successfully created.',
-            type: Store
-        })
-        @ApiResponse({
-            status: 400,
-            description: 'Bad request. Validation failed or other error.'
-        })
-        async createStore(@Body() storeData: CreateStoreDto): Promise<Store> {
-            try {
-                return await this.StoreService.createStoreWithRetry(storeData);
-            } catch (error) {
-                throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
-            }
+    @ApiOperation({ summary: 'Create a new store' })
+    @ApiBody({
+        description: 'Store data',
+        type: CreateStoreDto
+    })
+    @ApiResponse({
+        status: 201,
+        description: 'The store has been successfully created.',
+        type: Store
+    })
+    @ApiResponse({
+        status: 400,
+        description: 'Bad request. Validation failed or other error.'
+    })
+    async createStore(@Body() storeData: CreateStoreDto): Promise<Store> {
+        try {
+            return await this.StoreService.createStoreWithRetry(storeData);
+        } catch (error) {
+            throw new HttpException(error.message, HttpStatus.BAD_REQUEST);
         }
-
+    }
 
     @Get()
     @ApiOperation({ summary: 'Retrieve all stores' })
     @ApiResponse({ status: 200, description: 'List of all stores.', type: [Store] })
-    findAll(): Promise<Store[]> {
-        return this.StoreService.findAllStores();
+    async findAll(): Promise<Store[]> {
+        return await this.StoreService.findAllStores();
     }
+
 
 }

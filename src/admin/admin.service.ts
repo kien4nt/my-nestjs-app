@@ -16,12 +16,19 @@ export class AdminService {
   ) { }
 
 
-  //Find All Stores Under This Admin
-  async findStoresUnderThisAdmin(adminId: string): Promise<Store[]> {
+  //Find the admin record by adminId
+  async findAdminByAdminId(adminId: string): Promise<Admin> {
     const admin = await this.adminRepository.findOne({ where: { adminId } });
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found`);
     }
+
+    return admin;
+  }
+
+  //Find All Stores Under This Admin
+  async findStoresUnderThisAdmin(adminId: string): Promise<Store[]> {
+    const admin = await this.findAdminByAdminId(adminId);
 
     return await this.storeRepository.find({
       where: {

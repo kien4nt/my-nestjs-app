@@ -48,5 +48,31 @@ export class LatestDeliveryService {
 
     }
 
+    async upsertLatestDelivery(data: LatestDelivery): Promise<LatestDelivery> {
+        const existing = await this.latestDeliveryRepository.findOne({
+            where: { store: { id: data.storeIdPK } },
+            relations: ['store'],
+        });
+
+        if (existing) {
+            // Update existing record
+            existing.startDateTime = data.startDateTime;
+            existing.endDateTime = data.endDateTime;
+            existing.transactionType = data.transactionType;
+            existing.transactionStatus = data.transactionStatus;
+            existing.receiverList = data.receiverList;
+            existing.errors = data.errors;
+            return this.latestDeliveryRepository.save(existing);
+        } else {
+            // Create new record
+            const newRecord = this.latestDeliveryRepository.create({
+                ...data,
+                store: data.store,
+            });
+            return await this.latestDeliveryRepository.save(newRecord);
+        }
+    }
+
+
 }
 

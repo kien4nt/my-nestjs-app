@@ -1,92 +1,77 @@
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
-  IsNotEmpty,
-  IsDateString,
-  IsNumber,
   IsBoolean,
-  IsString,
+  IsDateString,
   IsEnum,
-  IsOptional,
+  IsNotEmpty,
+  IsNumber,
   IsObject,
-  IsNotEmptyObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested
 } from 'class-validator';
-
-// Define the allowed transaction types
-enum TransactionType {
-  SEND = 'send',
-  RECEIVE = 'receive',
-}
+import { Type } from 'class-transformer';
+import { ErrorDetail } from '../../common/interfaces/error-detail.interface';
 
 export class CreateDeliveryHistoryDto {
-  @ApiProperty({
-    description: 'The start date and time of the delivery.',
-    example: '2023-10-26T10:00:00Z',
-    type: String,
-    format: 'date-time',
-  })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: '2025-06-13T10:00:00.000Z', description: 'Start time of the delivery' })
+  @IsOptional()
   @IsDateString()
-  startDateTime: Date;
+  startDateTime?: Date;
 
-  @ApiProperty({
-    description: 'The end date and time of the delivery.',
-    example: '2023-10-26T11:00:00Z',
-    type: String,
-    format: 'date-time',
-  })
-  @IsNotEmpty()
+  @ApiPropertyOptional({ example: '2025-06-13T12:00:00.000Z', description: 'End time of the delivery' })
+  @IsOptional()
   @IsDateString()
-  endDateTime: Date;
+  endDateTime?: Date;
 
-  @ApiProperty({
-    description: 'The ID of the receiving store (foreign key to Store).',
-    example: 1,
-  })
-  @IsNotEmpty()
-  @IsNumber()
-  receiverId: number;
+  @ApiProperty({ example: '1a02d1e7-8f7d-4494-b440-365ff99374d0', description: 'storeId of the sender store' })
+  @IsUUID()
+  senderStoreId: string;
 
-  @ApiProperty({
-    description: 'The ID of the sending store (foreign key to Store).',
-    example: 2,
-  })
-  @IsNotEmpty()
-  @IsNumber()
-  senderId: number;
+  @ApiProperty({ example: '1a02d1e7-8f7d-4494-b440-365ff99374d0', description: 'storeId of the receiver store (optional)' })
+  @IsOptional()
+  @IsUUID()
+  receiverStoreId?: string;
 
-  @ApiProperty({
-    description: 'The status of the transaction (true for success, false for failure).',
-    example: true,
-  })
-  @IsNotEmpty()
+  @ApiProperty({ example: true, description: 'Status of the transaction (true = in progress, false = completed)' })
   @IsBoolean()
   transactionStatus: boolean;
 
-  @ApiProperty({
-    description: 'The type of transaction (send or receive).',
-    enum: TransactionType,
-    example: TransactionType.SEND,
-  })
-  @IsNotEmpty()
-  @IsEnum(TransactionType)
-  transactionType: TransactionType;
+  @ApiProperty({ enum: ['send', 'receive'], description: 'Type of transaction' })
+  @IsEnum(['send', 'receive'])
+  transactionType: string;
 
-  @ApiProperty({
-    description: 'A JSON object containing details of receivers.',
-    example: { user1: 'itemA', user2: 'itemB' },
-    type: Object,
-    required: false, // Marking as optional in DTO based on common use cases for JSONB
-  })
+  @ApiProperty({ example: { '1a02d1e7-8f7d-4494-b440-365ff99374d0': 'ABC Shop' }, required: false, description: 'List of receivers for sending transaction' })
+  @IsOptional()
   @IsObject()
-  @IsNotEmptyObject()
-  receiverList: object;
+  receiverList?: object;
 
   @ApiProperty({
-    description: 'An optional error message if the transaction failed.',
-    example: 'Item out of stock.',
-    required: false,
+    example: [{ errorCode: 'MISSING_DATA', errorMessage: 'Some data is missing.' }],
+    description: 'Optional list of error details'
   })
   @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateErrorDetailDto)
+  errors?: CreateErrorDetailDto[];
+}
+
+
+
+export class CreateErrorDetailDto {
+  @ApiProperty({
+    example: 'MISSING_DATA',
+    description: "Code of the occured error"
+  })
+  @IsString()
+  errorCode: string;
+
+  @ApiProperty({
+    example: 'Some data is missing.',
+    description: "The human-readable message that describes the error"
+  })
   @IsString()
   errorMessage: string;
 }
+
