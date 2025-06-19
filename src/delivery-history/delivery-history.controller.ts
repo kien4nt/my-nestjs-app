@@ -7,6 +7,7 @@ import {
   Put,
   Query,
   ParseIntPipe,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
 import { DeliveryHistoryService } from './delivery-history.service';
@@ -20,18 +21,47 @@ import { DeliveryHistoryRO } from './ro/delivery-history.ro';
 export class DeliveryHistoryController {
   constructor(private readonly deliveryService: DeliveryHistoryService) { }
 
-  @Get(":receiverStoreId")
-  @ApiOperation({ summary: "Find all delivery history records of this recevierStore by its storeId" })
-  @ApiParam({ name: "receiverStoreId", type: String, description: "storeId of the receiverStore" })
+  @Get("receiving/:receiverStoreId")
+  @ApiOperation({ summary: "Find all receiving records of this recevierStore by its storeId" })
+  @ApiParam({ 
+    name: "receiverStoreId", 
+    type: String, 
+    format: "UUID",
+    description: "storeId of the receiverStore" })
   @ApiResponse({
     status: 200,
-    description: "List of delivery history records of the receiverStore",
+    description: "List of receiving records of the receiverStore",
     type: [DeliveryHistoryRO],
   })
   @ApiResponse({ status: 404, description: "receiverStore not found." })
-  async findDeliverHistoryByReceiverStoreId(@Param('receiverStoreId') receiverStoreId: string): Promise<DeliveryHistoryRO[]> {
-    return await this.deliveryService.findDeliveryHistoryByReceiverStoreId(receiverStoreId);
+  async findReceiverHistoryByReceiverStoreId(
+    @Param('receiverStoreId', new ParseUUIDPipe({version:'4'})) receiverStoreId: string)
+    : Promise<DeliveryHistoryRO[]> {
+    return await this.deliveryService.findReceivingHistoryByReceiverStoreId(receiverStoreId);
   }
+
+  
+
+
+  @Get('sending/:receiverStoreId')
+  @ApiOperation({summary: "Find all sending records to this receiverStore by its storeId"})
+  @ApiParam({
+   name: "receiverStoreId", 
+    type: String, 
+    format: "UUID",
+    description: "storeId of the receiverStore" })
+  @ApiResponse({
+    status: 200,
+    description: "List of sending records to the receiverStore",
+    type: [DeliveryHistoryRO],
+  })
+  @ApiResponse({ status: 404, description: "receiverStore not found." })
+  async findSenderHistoryByReceiverStoreId(
+    @Param('receiverStoreId', new ParseUUIDPipe({ version: '4' })) receiverStoreId: string)
+    : Promise<DeliveryHistoryRO[]> {
+    return await this.deliveryService.findSendingHistoryByReceiverStoreId(receiverStoreId);
+  }
+
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a delivery history record by ID' })

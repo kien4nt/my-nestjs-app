@@ -1,3 +1,4 @@
+import { format } from 'date-fns';
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -21,7 +22,19 @@ export class DeliveryHistoryService {
     private readonly latestDeliveryService: LatestDeliveryService,
   ) { }
 
-  async findDeliveryHistoryByReceiverStoreId(receiverStoreId: string): Promise<DeliveryHistoryRO[]> {
+
+  async findSendingHistoryByReceiverStoreId(receiverStoreId: string): Promise<DeliveryHistoryRO[]> {
+    const historyRecords = await this.deliveryHistoryRepository
+      .createQueryBuilder('history')
+      .leftJoinAndSelect("history.senderStore", "sender")
+      .where(`history.receiverList ? :receiverStoreId`, { receiverStoreId })
+      .getMany();
+
+    return historyRecords.map(record => this.mapEntityToResponseObject(record));
+  }
+
+
+  async findReceivingHistoryByReceiverStoreId(receiverStoreId: string): Promise<DeliveryHistoryRO[]> {
     const receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
     const historyRecords = await this.deliveryHistoryRepository.find(
       {
@@ -30,7 +43,7 @@ export class DeliveryHistoryService {
             id: receiverStore.id,
           }
         },
-        relations: ['receiverStore', 'senderStore'],
+        relations: ['receiverStore', 'senderStore']
       }
     );
 
@@ -92,14 +105,14 @@ export class DeliveryHistoryService {
     const deliveryRecords: DeliveryHistory[] = [];
     const latestDeliveries: LatestDelivery[] = [];
 
-    const errorList: ErrorDetail[] = dto.errors?.length 
-    ? dto.errors.map(err => (
-      {
-        errorCode: err.errorCode || "",
-        errorMessage: err.errorMessage || "",
-      }
-    ))
-    : [];
+    const errorList: ErrorDetail[] = dto.errors?.length
+      ? dto.errors.map(err => (
+        {
+          errorCode: err.errorCode || "",
+          errorMessage: err.errorMessage || "",
+        }
+      ))
+      : [];
 
     // Create sender delivery record
     const senderDelivery = this.deliveryHistoryRepository.create({
@@ -193,15 +206,15 @@ export class DeliveryHistoryService {
       delivery.errors.length = 0;
     }
     else if (errors) {
-      delivery.errors = 
-      errors.length 
-      ? errors.map(err => (
-        {
-          errorCode: err.errorCode || "",
-          errorMessage: err.errorMessage || "",
-        }
-      ))
-      : [];
+      delivery.errors =
+        errors.length
+          ? errors.map(err => (
+            {
+              errorCode: err.errorCode || "",
+              errorMessage: err.errorMessage || "",
+            }
+          ))
+          : [];
     }
 
 
@@ -240,15 +253,15 @@ export class DeliveryHistoryService {
         latest.errors.length = 0;
       }
       else if (errors) {
-        latest.errors = 
-        errors.length 
-        ? errors.map(err => (
-          {
-            errorCode: err.errorCode || "",
-            errorMessage: err.errorMessage || "",
-          }
-        ))
-        : [];
+        latest.errors =
+          errors.length
+            ? errors.map(err => (
+              {
+                errorCode: err.errorCode || "",
+                errorMessage: err.errorMessage || "",
+              }
+            ))
+            : [];
       }
 
       await this.latestDeliveryService.upsertLatestDelivery(latest);

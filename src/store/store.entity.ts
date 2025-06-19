@@ -13,14 +13,12 @@ import { DeliveryHistory } from '../delivery-history/delivery-history.entity';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 
 @Entity('store')
-@Index(['storeId'], {unique: true})
 @Index(['storeName', 'storeCode', 'storeNameCode'], { unique: true })
-@Index(['storename'],{unique: true})
 export class Store {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({type: "uuid", unique: true})
+  @Column({type: "uuid",unique: true})
   storeId: string;
 
   @Column({ type: 'text' })
@@ -37,7 +35,7 @@ export class Store {
   password: string;
 
   //storeName != storename
-  @Column({ type: 'text', unique: true})
+  @Column({ type: 'text',unique: true})
   storename: string;
 
 

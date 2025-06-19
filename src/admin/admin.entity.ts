@@ -2,16 +2,14 @@ import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeor
 import { Store } from '../store/store.entity';
 
 @Entity('admin')
-@Index(['adminId'],{unique: true})
-@Index(['name'],{unique: true})
 export class Admin {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({type:'uuid', unique: true})
+  @Column({type:'uuid',unique: true})
   adminId: string;
 
-  @Column({ type: 'text', unique: true })
+  @Column({ type: 'text',unique: true})
   name: string;
 
   @Column({ type: 'text' })
