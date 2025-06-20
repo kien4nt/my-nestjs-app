@@ -14,7 +14,7 @@ export class LatestDeliveryService {
     ) { }
 
     async findLatestDeliveryOfThisStore(storeIdPK: number): Promise<LatestDelivery | null> {
-
+        
         const latestDelivery = await this.latestDeliveryRepository.findOne({
             where: { store: { id: storeIdPK } },
             relations: ['store'],

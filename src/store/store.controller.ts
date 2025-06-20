@@ -11,6 +11,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/s
 import { StoreService } from './store.service';
 import { Store } from './store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
+import { UuidDto } from 'src/common/dtos/uuid.dto';
 
 
 @ApiTags('stores')
@@ -19,26 +20,28 @@ export class StoreController {
     constructor(private readonly StoreService: StoreService) { }
 
 
-    @Get('groups/:storeId/shops')
+    @Get('groups/:uuid/shops')
     @ApiOperation({ summary: 'Retrieve all child shops of a specific parent group' })
-    @ApiParam({ name: 'storeId', description: 'The display ID of the parent group', type: String })
+    @ApiParam({ name: 'uuid', description: 'The display ID of the parent group', type: String })
     @ApiResponse({ status: 200, description: 'List of child shops.', type: [Store] })
     @ApiResponse({ status: 404, description: 'Group not found.' })
-    async findChildShopsOfThisGroup(@Param('storeId') storeId: string): Promise<Store[]> {
-        return await this.StoreService.findChildShopsOfThisGroup(storeId);
+    @ApiResponse({ status: 400, description: 'Invalid UUID format.' })
+    async findChildShopsOfThisGroup(@Param() dto: UuidDto): Promise<Store[]> {
+        return await this.StoreService.findChildShopsOfThisGroup(dto.uuid);
     }
 
-    @Get('groups/:storeId/admin')
+    @Get('groups/:uuid/admin')
     @ApiOperation({ summary: 'Retrieve all stores which are under the same admin as this group' })
-    @ApiParam({ name: 'storeId', description: 'The display ID of the group', type: String })
+    @ApiParam({ name: 'uuid', description: 'The display ID of the group', type: String })
     @ApiResponse({
         status: 200,
         description: 'List of stores which are under the same admin as this group',
         type: [Store]
     })
     @ApiResponse({ status: 404, description: 'Group not found.' })
-    async findDeliverableStores(@Param('storeId') storeId: string): Promise<Store[]> {
-        return await this.StoreService.findStoresUnderTheSameAdminAsThisGroup(storeId);
+    @ApiResponse({ status: 400, description: 'Invalid UUID format.' })
+    async findDeliverableStores(@Param() dto: UuidDto): Promise<Store[]> {
+        return await this.StoreService.findStoresUnderTheSameAdminAsThisGroup(dto.uuid);
     }
 
     @Get('groups')
@@ -48,13 +51,14 @@ export class StoreController {
         return await this.StoreService.filterGroupOnlyList();
     }
 
-    @Get(':storeId')
+    @Get(':uuid')
     @ApiOperation({ summary: 'Retrieve a single store by its display ID' })
-    @ApiParam({ name: 'storeId', description: 'The display ID of the store', type: String })
+    @ApiParam({ name: 'uuid', description: 'The display ID of the store', type: String })
     @ApiResponse({ status: 200, description: 'The found store.', type: Store })
     @ApiResponse({ status: 404, description: 'Store not found.' })
-    async findOne(@Param('storeId') storeId: string): Promise<Store> {
-        return await this.StoreService.findStoreByStoreId(storeId);
+    @ApiResponse({ status: 400, description: 'Invalid UUID format.' })
+    async findOne(@Param() dto: UuidDto): Promise<Store> {
+        return await this.StoreService.findStoreByStoreId(dto.uuid);
     }
 
     @Post()

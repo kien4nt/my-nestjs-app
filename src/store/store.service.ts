@@ -1,9 +1,10 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Store } from './store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { v4 as uuidv4 } from 'uuid';
+import { isUUID } from 'class-validator';
 
 @Injectable()
 export class StoreService {
@@ -29,6 +30,22 @@ export class StoreService {
       throw new NotFoundException(`Store ${storeId} not found.`);
     }
     return store;
+  }
+
+
+   //Find Stores By a list of storeIds
+  async findStoresByStoreIdList(storeIdList: string[]): Promise<Store[]> {
+    const stores = await this.storeRepository.find({
+        where: {
+          storeId: In(storeIdList),
+        },
+        relations: ["latestDelivery"]
+      });
+
+    if (!stores?.length) {
+      throw new NotFoundException(`Found no store from the provided storeIds.`);
+    }
+    return stores;
   }
 
   //Find Stores with type 'group'

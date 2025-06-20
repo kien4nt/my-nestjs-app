@@ -51,9 +51,9 @@ async function seedDeliveryVariant() {
             const senderStart = faker.date.soon({ days: 7, refDate: now });
             const senderEnd = faker.date.soon({ days: 1, refDate: senderStart });
 
-            const receiverListObject: Record<string, string> = {};
+            const receiverList: string[] = [];
             for (const r of chosenReceivers) {
-                receiverListObject[r.storeId] = r.storename;
+                receiverList.push(r.storeId);
             }
 
             const isCompleted = faker.number.int({ min: 1, max: 100 }) <= 95;
@@ -66,7 +66,7 @@ async function seedDeliveryVariant() {
                 transactionStatus: !isCompleted,
                 senderStore: sender,
                 receiverStore: undefined,
-                receiverList: receiverListObject,
+                receiverList: receiverList,
                 errors: !isCompleted && faker.number.int({ min: 1, max: 100 }) <= 10
                     ? [{ errorCode: 'TIMEOUT', errorMessage: 'Sender failed due to timeout.' }]
                     : undefined,
@@ -114,7 +114,7 @@ async function seedDeliveryVariant() {
                 endDateTime: senderEnd,
                 transactionType: 'send',
                 transactionStatus: !isCompleted,
-                receiverList: receiverListObject,
+                receiverList: receiverList,
                 errors: senderRecord.errors,
             }, ['storeIdPK']);
 

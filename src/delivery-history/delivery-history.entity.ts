@@ -42,8 +42,8 @@ export class DeliveryHistory {
     @Column({ type: 'text', enum: ['send', 'receive'] })
     transactionType: string;
 
-    @Column({ type: 'jsonb',nullable: true})
-    receiverList: object;
+    @Column({ type: 'jsonb',nullable: true, default: []})
+    receiverList: string[];
 
     @Column({ type: 'jsonb', nullable: true, default: [] }) 
     errors: ErrorDetail[]; 

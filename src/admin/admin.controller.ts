@@ -5,21 +5,29 @@ import { Body, Controller, Get, HttpException, HttpStatus, Param, Post } from '@
 import { ApiParam, ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { catchError } from 'rxjs';
+import { UuidDto } from 'src/common/dtos/uuid.dto';
 
 @ApiTags('admins')
 @Controller('admins')
 export class AdminController {
     constructor(private readonly AdminService: AdminService) { }
+    
+    @Get('create-delivery-folders')
+    async createDeliveryFolders(){
+        return await this.AdminService.createDeliveryFolders();
+    }
 
-    @Get(':adminId')
+    @Get(':uuid')
     @ApiOperation({ summary: 'Retrieve all stores managed by this admin' })
-    @ApiParam({ name: 'adminId', description: 'The display ID of the admin', type: String })
+    @ApiParam({ name: 'uuid', description: 'The display ID of the admin', type: String })
     @ApiResponse({ status: 200, description: 'List of store managed by this admin.', type: [Store] })
     @ApiResponse({ status: 404, description: 'Admin not found.' })
-    async findStoresUnderThisAdmin(@Param("adminId") adminId: string,)
+    @ApiResponse({ status: 400, description: 'Invalid UUID format.' })
+    async findStoresUnderThisAdmin(@Param() dto: UuidDto,)
         : Promise<Store[]> {
-        return await this.AdminService.findStoresUnderThisAdmin(adminId);
+        return await this.AdminService.findStoresUnderThisAdmin(dto.uuid);
     }
+
 
     @Post()
     @ApiOperation({ summary: 'Create a new admin' })

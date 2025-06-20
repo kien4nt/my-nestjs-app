@@ -1,10 +1,14 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Admin } from './admin.entity'
 import { Store } from '../store/store.entity'
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateAdminDto } from './dto/create-admin.dto';
+import { validateSync } from 'class-validator';
+import { UuidDto } from 'src/common/dtos/uuid.dto';
+import * as fs from 'fs-extra';
+import * as path from 'path';
 
 @Injectable()
 export class AdminService {
@@ -15,6 +19,38 @@ export class AdminService {
     private storeRepository: Repository<Store>
   ) { }
 
+
+  async createDeliveryFolders() {
+    let result = '';
+    const base_dir = path.resolve(process.cwd(), 'delivery_data');
+    const admins = await this.adminRepository.find(
+      { select: ['adminId'] }
+    );
+    for (const admin of admins) {
+      const adminId = admin.adminId;
+      const hqDitPath = path.join(base_dir,'hq', adminId);
+      try {
+        await fs.ensureDir(hqDitPath);
+        result += `INFO : Directory ${hqDitPath} ensured successfully (created if not exists).\n`;
+      }
+      catch (err) {
+        result += `ERROR: Error ensuring directory ${hqDitPath}: ${err}\n`;
+      }
+
+      const stores = await this.findStoresUnderThisAdmin(adminId);
+      for (const store of stores) {
+        const storeId = store.storeId;
+        const dirPath = path.join(base_dir, adminId, storeId,'gae_upload');
+        try {
+          await fs.ensureDir(dirPath);
+          result += `INFO : Directory ${dirPath} ensured successfully (created if not exists).\n`;
+        } catch (err) {
+          result += `ERROR: Error ensuring directory ${dirPath}: ${err}\n`;
+        }
+      }
+    }
+    return result.trim();
+  }
 
   //Find the admin record by adminId
   async findAdminByAdminId(adminId: string): Promise<Admin> {

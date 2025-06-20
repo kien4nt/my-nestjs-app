@@ -53,7 +53,7 @@ export class UpdateDeliveryHistoryDto {
         description: 'storeId of reciever store'
     })
     @IsOptional()
-    @IsUUID()
+    @IsUUID('4')
     receiverStoreId?: string;
 
     @ApiPropertyOptional({
@@ -61,19 +61,19 @@ export class UpdateDeliveryHistoryDto {
         description: 'storeId of sender store'
     })
     @IsOptional()
-    @IsUUID()
+    @IsUUID('4')
     senderStoreId?: string;
 
+
     @ApiPropertyOptional({
-        example: {
-            'a1b2c3': 'Can Tho Store 1',
-            'd4e5f6': 'Can Tho Store 2'
-        },
-        description: 'Updated receiver list if this is a sender delivery.'
+        example: ['1a02d1e7-8f7d-4494-b440-365ff99374d0', '2b03e2f8-9g8e-5505-c551-476gg00485e1'],
+        required: false,
+        description: 'List of receiver UUIDs for sending transaction',
     })
     @IsOptional()
-    @IsObject()
-    receiverList?: object;
+    @IsUUID('4', { each: true })
+    @Type(() => String)
+    receiverList?: string[];
 
     @ApiPropertyOptional({
         example: [
@@ -85,23 +85,23 @@ export class UpdateDeliveryHistoryDto {
     @ValidateNested({ each: true })
     @Type(() => UpdateErrorDetailDto)
     errors?: UpdateErrorDetailDto[];
-} 
+}
 
 export class UpdateErrorDetailDto {
-  @ApiPropertyOptional({
-    example: 'MISSING_DATA',
-    description: "Code of the occured error"
-  })
-  @IsOptional()
-  @IsString()
-  errorCode?: string;
+    @ApiPropertyOptional({
+        example: 'MISSING_DATA',
+        description: "Code of the occured error"
+    })
+    @IsOptional()
+    @IsString()
+    errorCode?: string;
 
-  @ApiPropertyOptional({
-    example: 'Some data is missing.',
-    description: "The human-readable message that describes the error"
-  })
-  @IsOptional()
-  @IsString()
-  errorMessage?: string;
+    @ApiPropertyOptional({
+        example: 'Some data is missing.',
+        description: "The human-readable message that describes the error"
+    })
+    @IsOptional()
+    @IsString()
+    errorMessage?: string;
 }
 

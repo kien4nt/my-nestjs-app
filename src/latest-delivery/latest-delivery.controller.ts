@@ -11,6 +11,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/s
 import { LatestDeliveryService } from './latest-delivery.service';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 import { UpsertLatestDeliveryDto } from './dto/upsert-latest-delivery.dto';
+import { UuidDto } from 'src/common/dtos/uuid.dto';
 
 @ApiTags('latest-delivery')
 @Controller('latest-delivery')
@@ -19,14 +20,15 @@ export class LatestDeliveryController {
         private readonly LatestDeliveryService: LatestDeliveryService,
     ) { }
 
-    @Get(':storeId/check-delivery-status')
+    @Get(':uuid/check-delivery-status')
     @ApiOperation({ summary: 'Check if a delivery can be proceeded for a store based on its latest delivery status' })
-    @ApiParam({ name: 'storeId', description: 'The display ID of the store', type: String })
+    @ApiParam({ name: 'uuid', description: 'The display ID of the store', type: String })
     @ApiResponse({ status: 200, description: 'Delivery can be proceeded.', type: Boolean })
     @ApiResponse({ status: 404, description: 'Delivery should be canceled.', type: Boolean })
-    async checkDeliveryProceedStatus(@Param('storeId') storeId: string)
+    @ApiResponse({ status: 400, description: 'Invalid UUID format.' })
+    async checkDeliveryProceedStatus(@Param() dto: UuidDto)
         : Promise<boolean> {
-        return await this.LatestDeliveryService.checkDeliverable(storeId);
+        return await this.LatestDeliveryService.checkDeliverable(dto.uuid);
     }
 
     // @Put(':storeIdPK')

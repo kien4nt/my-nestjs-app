@@ -46,7 +46,7 @@ export class DeliveryHistoryRO {
     @Transform(
         ({obj}) => obj.transactionType === 'send' ? obj.receiverList : undefined
     )
-    receiverList: object;
+    receiverList: string[];
     
     @Expose()
     @Transform(
