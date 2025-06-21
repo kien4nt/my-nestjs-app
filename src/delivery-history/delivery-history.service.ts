@@ -10,7 +10,7 @@ import { LatestDeliveryService } from '../latest-delivery/latest-delivery.servic
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 import { Store } from '../store/store.entity';
 import { DeliveryHistoryRO } from './ro/delivery-history.ro';
-import { plainToInstance } from 'class-transformer';
+import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { ErrorDetail } from 'src/common/interfaces/error-detail.interface';
 import { isUUID, validateSync } from 'class-validator';
 import { UuidDto } from 'src/common/dtos/uuid.dto';
@@ -35,7 +35,7 @@ export class DeliveryHistoryService {
     const historyRecords = await this.deliveryHistoryRepository
       .createQueryBuilder('history')
       .leftJoinAndSelect("history.senderStore", "sender")
-      .where(`history.receiverList @> ARRAY[:receiverStoreId]::jsonb`, { receiverStoreId })
+      .where(`history.receiverList @> :jsonedReceiverStoreId`, { jsonedReceiverStoreId : JSON.stringify(receiverStoreId) })
       .getMany();
 
     return historyRecords.map(record => this.mapEntityToResponseObject(record));
@@ -72,7 +72,7 @@ export class DeliveryHistoryService {
     );
   }
 
-  async delivery(dto: CreateDeliveryHistoryDto):Promise<DeliveryHistoryRO[]> {
+  async deliver(dto: CreateDeliveryHistoryDto):Promise<DeliveryHistoryRO[]> {
 
     //Check if there is any receiver
     if (!dto.receiverList?.length) {
@@ -452,8 +452,13 @@ export class DeliveryHistoryService {
 
     if (!delivery) throw new NotFoundException(`Delivery record ${id} not found.`);
 
+    //Clean undefined value from dto
+    const cleanObj = instanceToPlain(dto,{
+      exposeUnsetFields: false
+    })
+
     //Separate errors from other properties of dto
-    const { errors, ...rest } = dto;
+    const { errors, ...rest } = cleanObj;
 
 
     // Update provided fields from dto except errors
@@ -462,11 +467,11 @@ export class DeliveryHistoryService {
 
     // If explicitly marked completed -> update endDateTime
     // Else update errors if any
-    if (dto.transactionStatus === false) {
+    if (cleanObj.transactionStatus && cleanObj.transactionStatus === false) {
       delivery.endDateTime = new Date();
-      delivery.errors.length = 0;
     }
-    else if (errors) {
+    
+    if (errors) {
       delivery.errors =
         errors.length
           ? errors.map(err => (
@@ -478,22 +483,24 @@ export class DeliveryHistoryService {
           : [];
     }
 
+    const receiverStoreId = cleanObj.receiverStoreId;
+    const senderStoreId = cleanObj.senderStoreId;
 
     //Update sender, receiver if any
-    if (dto.receiverStoreId) {
-      const receiverErrors = validateSync(new UuidDto(dto.receiverStoreId));
+    if (receiverStoreId) {
+      const receiverErrors = validateSync(new UuidDto(receiverStoreId));
       if (receiverErrors.length > 0) {
         throw new BadRequestException("Invalid receiverStoreId format!");
       }
-      delivery.receiverStore = await this.storeService.findStoreByStoreId(dto.receiverStoreId);
+      delivery.receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
     }
 
-    if (dto.senderStoreId) {
-      const senderErrors = validateSync(new UuidDto(dto.senderStoreId));
+    if (senderStoreId) {
+      const senderErrors = validateSync(new UuidDto(senderStoreId));
       if (senderErrors.length > 0) {
         throw new BadRequestException("Invalid senderStoreId format!");
       }
-      delivery.senderStore = await this.storeService.findStoreByStoreId(dto.senderStoreId);
+      delivery.senderStore = await this.storeService.findStoreByStoreId(senderStoreId);
     }
 
     //Save the update
@@ -511,24 +518,7 @@ export class DeliveryHistoryService {
     );
 
     if (latest) {
-      // If explicitly marked completed -> update endDateTime
-      // Else update errors if any
-      if (dto.transactionStatus === false) {
-        latest.transactionStatus = false;
-        latest.endDateTime = new Date();
-        latest.errors.length = 0;
-      }
-      else if (errors) {
-        latest.errors =
-          errors.length
-            ? errors.map(err => (
-              {
-                errorCode: err.errorCode || "",
-                errorMessage: err.errorMessage || "",
-              }
-            ))
-            : [];
-      }
+      Object.assign(latest,updatedRecord)
 
       await this.latestDeliveryService.upsertLatestDelivery(latest);
     }

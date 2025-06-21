@@ -26,6 +26,7 @@ export class DeliveryHistory {
 
 
     //Start of Store as sender relationship
+    @Index()
     @ManyToOne(
         () => Store, (store) => store.sentDeliveries, {
         nullable: true,

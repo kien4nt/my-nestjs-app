@@ -1,8 +1,9 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddGINIndexes1750324091004 implements MigrationInterface {
+export class IndexingSenderId1750491323590 implements MigrationInterface {
+    name = 'IndexingSenderId1750491323590'
 
-  public async up(queryRunner: QueryRunner): Promise<void> {
+    public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`
             DO $$
             BEGIN

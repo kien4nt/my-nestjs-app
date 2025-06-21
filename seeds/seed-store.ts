@@ -5,6 +5,33 @@ import { Store } from '../src/store/store.entity';
 import { Admin } from '../src/admin/admin.entity';
 
 
+const unique_storenames = new Set<string>();
+const unique_storeCodes = new Set<string>();
+
+async function getUnique_storename(){
+  let storename : string;
+  do{
+    storename = faker.company.name();
+  }
+  while(unique_storenames.has(storename));
+
+  unique_storenames.add(storename);
+
+  return storename;
+}
+
+async function getUnique_storeCode(){
+  let storeCode : string;
+  do{
+    storeCode = faker.string.alphanumeric(4).toUpperCase();
+  }
+  while(unique_storeCodes.has(storeCode));
+
+  unique_storeCodes.add(storeCode);
+
+  return storeCode;
+}
+
 
 async function seedStores() {
   const dataSource = await DataSource.initialize();
@@ -26,11 +53,11 @@ async function seedStores() {
       groupsByAdmin[admin.id] = [];
 
       // Create 3 group stores per admin
-      for (let i = 0; i < 3; i++) {
-        const storename = faker.company.name(); // human-readable
+      for (let i = 0; i < 15; i++) {
+        const storename = await getUnique_storename(); // human-readable
         const storeName = faker.internet.domainWord().toLowerCase() + `-group-${i}`; // lowercase, no spaces
 
-        const storeCode = faker.string.alphanumeric(4).toUpperCase();
+        const storeCode = await getUnique_storeCode();
         const groupStore = storeRepo.create({
           storeId: uuidv4(),
           storeName,
@@ -58,11 +85,11 @@ async function seedStores() {
     for (const admin of admins) {
       const availableGroups = groupsByAdmin[admin.id] || [];
 
-      for (let i = 0; i < 7; i++) {
-        const storename = faker.company.name(); // human-readable 
+      for (let i = 0; i < 35; i++) {
+        const storename = await getUnique_storename(); // human-readable 
         const storeName = faker.internet.domainWord().toLowerCase() + `-shop-${i}`; // lowercase, no spaces
 
-        const storeCode = faker.string.alphanumeric(4).toUpperCase();
+        const storeCode = await getUnique_storeCode();
         const group = faker.helpers.maybe(() => faker.helpers.arrayElement(availableGroups), { probability: 0.7 });
 
         const shopStore = storeRepo.create({

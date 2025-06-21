@@ -15,7 +15,7 @@ async function seedDeliveryVariant() {
     const allStores = await storeRepo.find({ relations: ['admin', 'latestDelivery', 'childShops'] });
     const deliveryHistories: DeliveryHistory[] = [];
     const batchSize = 100;
-    const numberOfRecordsToInsert = 5000;
+    const numberOfRecordsToInsert = 100000;
     let totalDeliveries = await deliveryRepo.count()
 
     while (totalDeliveries < numberOfRecordsToInsert) {
@@ -36,12 +36,15 @@ async function seedDeliveryVariant() {
                 return (isManagedShop || r.storeType === 'group') && canReceive;
             });
 
-            const maxReceivers = Math.min(receivers.length, 10);
-            const minReceivers = Math.min(3, receivers.length);
+            const maxReceivers = Math.min(receivers.length, 50);
+            const minReceivers = Math.min(10, receivers.length);
 
             if (minReceivers === 0) continue;
 
-            const chosenReceivers = faker.helpers.arrayElements(receivers, faker.number.int({ min: minReceivers, max: maxReceivers }));
+            const chosenReceivers = faker.helpers.arrayElements(
+                receivers, faker.number.int({ min: minReceivers, max: maxReceivers })
+            );
+
             if (chosenReceivers.length === 0) continue;
 
             const now = new Date();
@@ -56,7 +59,7 @@ async function seedDeliveryVariant() {
                 receiverList.push(r.storeId);
             }
 
-            const isCompleted = faker.number.int({ min: 1, max: 100 }) <= 95;
+            const isCompleted = faker.number.int({ min: 1, max: 100 }) <= 98;
 
 
             const senderRecord = deliveryRepo.create({
@@ -67,9 +70,9 @@ async function seedDeliveryVariant() {
                 senderStore: sender,
                 receiverStore: undefined,
                 receiverList: receiverList,
-                errors: !isCompleted && faker.number.int({ min: 1, max: 100 }) <= 10
+                errors: isCompleted && faker.number.int({ min: 1, max: 100 }) <= 2
                     ? [{ errorCode: 'TIMEOUT', errorMessage: 'Sender failed due to timeout.' }]
-                    : undefined,
+                    : [],
             });
 
             deliveryHistories.push(senderRecord);
@@ -79,7 +82,7 @@ async function seedDeliveryVariant() {
                 const rStart = faker.date.between({ from: senderStart, to: senderEnd });
                 const rEnd = faker.date.between({ from: rStart, to: senderEnd });
 
-                const rCompleted = faker.number.int({ min: 1, max: 100 }) <= 95;
+                const rCompleted = faker.number.int({ min: 1, max: 100 }) <= 98;
 
                 const rRecord = deliveryRepo.create({
                     startDateTime: rStart,
@@ -88,10 +91,10 @@ async function seedDeliveryVariant() {
                     transactionStatus: !rCompleted,
                     senderStore: sender,
                     receiverStore: receiver,
-                    receiverList: undefined,
-                    errors: !rCompleted && faker.number.int({ min: 1, max: 100 }) <= 10
+                    receiverList: [],
+                    errors: rCompleted && faker.number.int({ min: 1, max: 100 }) <= 2
                         ? [{ errorCode: 'MISSING_DATA', errorMessage: 'Receiver lost package info.' }]
-                        : undefined,
+                        : [],
                 });
                 deliveryHistories.push(rRecord);
 
@@ -102,7 +105,7 @@ async function seedDeliveryVariant() {
                     endDateTime: rEnd,
                     transactionType: 'receive',
                     transactionStatus: !rCompleted,
-                    receiverList: undefined,
+                    receiverList: [],
                     errors: rRecord.errors,
                 }, ['storeIdPK']);
             }

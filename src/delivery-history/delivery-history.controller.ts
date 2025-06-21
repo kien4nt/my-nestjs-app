@@ -23,11 +23,12 @@ export class DeliveryHistoryController {
 
   @Get("receiving/:receiverStoreId")
   @ApiOperation({ summary: "Find all receiving records of this recevierStore by its storeId" })
-  @ApiParam({ 
-    name: "receiverStoreId", 
-    type: String, 
+  @ApiParam({
+    name: "receiverStoreId",
+    type: String,
     format: "UUID",
-    description: "storeId of the receiverStore" })
+    description: "storeId of the receiverStore"
+  })
   @ApiResponse({
     status: 200,
     description: "List of receiving records of the receiverStore",
@@ -35,21 +36,22 @@ export class DeliveryHistoryController {
   })
   @ApiResponse({ status: 404, description: "receiverStore not found." })
   async findReceiverHistoryByReceiverStoreId(
-    @Param('receiverStoreId', new ParseUUIDPipe({version:'4'})) receiverStoreId: string)
+    @Param('receiverStoreId', new ParseUUIDPipe({ version: '4' })) receiverStoreId: string)
     : Promise<DeliveryHistoryRO[]> {
     return await this.deliveryService.findReceivingHistoryByReceiverStoreId(receiverStoreId);
   }
 
-  
+
 
 
   @Get('sending/:receiverStoreId')
-  @ApiOperation({summary: "Find all sending records to this receiverStore by its storeId"})
+  @ApiOperation({ summary: "Find all sending records to this receiverStore by its storeId" })
   @ApiParam({
-   name: "receiverStoreId", 
-    type: String, 
+    name: "receiverStoreId",
+    type: String,
     format: "UUID",
-    description: "storeId of the receiverStore" })
+    description: "storeId of the receiverStore"
+  })
   @ApiResponse({
     status: 200,
     description: "List of sending records to the receiverStore",
@@ -62,6 +64,26 @@ export class DeliveryHistoryController {
     return await this.deliveryService.findSendingHistoryByReceiverStoreId(receiverStoreId);
   }
 
+  @Post('create')
+  @ApiOperation({ summary: 'Create delivery history records (sender,receivers)' })
+  @ApiResponse({ status: 201, description: 'The delivery history records were successfully created.' })
+  @ApiBody({ type: CreateDeliveryHistoryDto })
+  async create(@Body() dto: CreateDeliveryHistoryDto) {
+    return await this.deliveryService.create(dto);
+  }
+
+  @Post('deliver')
+  @ApiOperation({ summary: 'Deliver assets from sender to receivers and create delivery history records' })
+  @ApiResponse({
+    status: 201
+    , description: 'The delivery has been completed successfully and history records were successfully created.'
+  })
+  @ApiResponse({ status: 400, description: 'Invalid request body' })
+  @ApiResponse({ status: 500, description: 'Internal server error' })
+  @ApiBody({ type: CreateDeliveryHistoryDto })
+  async deliver(@Body() dto: CreateDeliveryHistoryDto) {
+    return await this.deliveryService.deliver(dto);
+  }
 
   @Put(':id')
   @ApiOperation({ summary: 'Update a delivery history record by ID' })
@@ -73,13 +95,6 @@ export class DeliveryHistoryController {
     return await this.deliveryService.update(id, dto);
   }
 
-  @Post()
-  @ApiOperation({ summary: 'Create delivery history records (sender,receivers)' })
-  @ApiResponse({ status: 201, description: 'The delivery history records were successfully created.' })
-  @ApiBody({ type: CreateDeliveryHistoryDto })
-  async create(@Body() dto: CreateDeliveryHistoryDto) {
-    return await this.deliveryService.create(dto);
-  }
 
 
 }
