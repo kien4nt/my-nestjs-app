@@ -34,7 +34,6 @@ export class DeliveryHistoryService {
   ) { }
 
 
-
   async findSendingHistoryByReceiverStoreId(dto: FindDeliveryHistoryDto): Promise<DeliveryHistoryRO[]> {
     const { receiverStoreId, page = 1, pageSize = 50 } = dto;
 

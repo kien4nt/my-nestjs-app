@@ -30,6 +30,9 @@ import { LatestDeliveryModule } from './latest-delivery/latest-delivery.module';
         synchronize: false,         // Turn off sync!
         migrationsRun: false,        // Auto-run migrations on app start
         logging: false,             //Show queries
+        extra:{
+          max: 20, // Set maximum number of connections in the pool
+        },
       }),
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),
