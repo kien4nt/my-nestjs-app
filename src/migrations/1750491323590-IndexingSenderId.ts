@@ -4,6 +4,7 @@ export class IndexingSenderId1750491323590 implements MigrationInterface {
     name = 'IndexingSenderId1750491323590'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        
         await queryRunner.query(`
             DO $$
             BEGIN
@@ -38,7 +39,7 @@ export class IndexingSenderId1750491323590 implements MigrationInterface {
                     WHERE c.relname = 'IDX_delivery_history_receiverList_gin'
                 ) THEN
                     CREATE INDEX "IDX_delivery_history_receiverList_gin" 
-                    ON "delivery_history" USING GIN ("receiverList");
+                    ON delivery_history USING GIN ("receiverList");
                 END IF;
             END
             $$;
@@ -57,13 +58,16 @@ export class IndexingSenderId1750491323590 implements MigrationInterface {
             END
             $$;
         `);
+
+
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
+       
         await queryRunner.query(
             `DROP INDEX IF EXISTS "public"."IDX_e7382dd1a4ed1f24a7f26b69d0"`
         );
-        
+
         await queryRunner.query(
             `DROP INDEX IF EXISTS "public"."IDX_5fd62bf6ae9f2ce91a21e36b0a"`
         );
@@ -73,6 +77,9 @@ export class IndexingSenderId1750491323590 implements MigrationInterface {
         await queryRunner.query(
             `DROP INDEX IF EXISTS "IDX_latest_delivery_receiverList_gin";`
         );
+
+        
+
     }
 
 }

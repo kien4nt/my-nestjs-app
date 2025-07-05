@@ -22,7 +22,8 @@ export class AdminService {
 
   async createDeliveryFolders() {
     let result = '';
-    const base_dir = path.resolve(process.cwd(), 'delivery_data');
+    
+    const base_dir = path.resolve(process.cwd(),'..', 'data');
     const admins = await this.adminRepository.find(
       { select: ['adminId'] }
     );
@@ -51,6 +52,8 @@ export class AdminService {
     }
     return result.trim();
   }
+
+ 
 
   //Find the admin record by adminId
   async findAdminByAdminId(adminId: string): Promise<Admin> {
@@ -105,4 +108,5 @@ export class AdminService {
     }
     throw new InternalServerErrorException('Failed to create Admin after multiple UUID retries.');
   }
+
 }

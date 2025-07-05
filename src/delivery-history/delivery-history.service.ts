@@ -1,24 +1,31 @@
-import { format } from 'date-fns';
-import { Injectable, NotFoundException, BadRequestException, InternalServerErrorException, HttpStatus } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DeliveryHistory } from './delivery-history.entity';
 import { CreateDeliveryHistoryDto } from './dto/create-delivery-history.dto';
-import { UpdateDeliveryHistoryDto, UpdateErrorDetailDto } from './dto/update-delivery-history.dto';
+import { UpdateDeliveryHistoryDto } from './dto/update-delivery-history.dto';
 import { StoreService } from '../store/store.service';
 import { LatestDeliveryService } from '../latest-delivery/latest-delivery.service';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 import { Store } from '../store/store.entity';
 import { DeliveryHistoryRO } from './ro/delivery-history.ro';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
-import { ErrorDetail } from 'src/common/interfaces/error-detail.interface';
-import { isUUID, validateSync } from 'class-validator';
+import { ErrorDetail, getErrorDetail } from 'src/common/interfaces/error-detail.interface';
+import { validateSync } from 'class-validator';
 import { UuidDto } from 'src/common/dtos/uuid.dto';
 import * as fs from 'fs-extra';
 import * as path from 'path';
+import { FindDeliveryHistoryDto } from './dto/find-delivery-history.dto';
+import { DeliveryHistoryRelation, StoreRelation } from 'src/common/enums/relations.enum';
+
+
+
 
 @Injectable()
 export class DeliveryHistoryService {
+
+  private cachedIdMap: Map<string, number> = new Map();
+
   constructor(
     @InjectRepository(DeliveryHistory)
     private deliveryHistoryRepository: Repository<DeliveryHistory>,
@@ -27,41 +34,73 @@ export class DeliveryHistoryService {
   ) { }
 
 
-  async findSendingHistoryByReceiverStoreId(receiverStoreId: string): Promise<DeliveryHistoryRO[]> {
+
+  async findSendingHistoryByReceiverStoreId(dto: FindDeliveryHistoryDto): Promise<DeliveryHistoryRO[]> {
+    const { receiverStoreId, page = 1, pageSize = 50 } = dto;
+
     const errors = validateSync(new UuidDto(receiverStoreId));
     if (errors.length > 0) {
       throw new BadRequestException('Invalid receiverStoreId provided!');
     }
+
+    if (!this.cachedIdMap.has(receiverStoreId)) {
+      const receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
+      this.cachedIdMap.set(receiverStoreId, receiverStore.id);
+    }
+
+    const offset = (page - 1) * pageSize;
+
     const historyRecords = await this.deliveryHistoryRepository
       .createQueryBuilder('history')
       .leftJoinAndSelect("history.senderStore", "sender")
-      .where(`history.receiverList @> :jsonedReceiverStoreId`, { jsonedReceiverStoreId : JSON.stringify(receiverStoreId) })
+      .where(`history.receiverList ? :storeId`, { storeId: receiverStoreId })
+      .skip(offset)
+      .take(pageSize)
       .getMany();
+
 
     return historyRecords.map(record => this.mapEntityToResponseObject(record));
   }
 
 
-  async findReceivingHistoryByReceiverStoreId(receiverStoreId: string): Promise<DeliveryHistoryRO[]> {
+
+  async findReceivingHistoryByReceiverStoreId(
+    dto: FindDeliveryHistoryDto,
+    historyRelations: DeliveryHistoryRelation[] = [
+      DeliveryHistoryRelation.SENDER_STORE
+    ])
+    : Promise<Record<string,DeliveryHistoryRO[]>> {
+    const { receiverStoreId, page = 1, pageSize = 50 } = dto;
+
     const errors = validateSync(new UuidDto(receiverStoreId));
     if (errors.length > 0) {
       throw new BadRequestException('Invalid receiverStoreId provided!');
     }
-    const receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
-    const historyRecords = await this.deliveryHistoryRepository.find(
-      {
-        where: {
-          receiverStore: {
-            id: receiverStore.id,
-          }
-        },
-        relations: ['receiverStore', 'senderStore']
-      }
-    );
 
 
-    return historyRecords.map(record => this.mapEntityToResponseObject(record))
+    if (!this.cachedIdMap.has(receiverStoreId)) {
+      const receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
+      this.cachedIdMap.set(receiverStoreId, receiverStore.id);
+    }
+
+
+    const offset = (page - 1) * pageSize;
+
+    const historyRecords = await this.deliveryHistoryRepository.find({
+      where: {
+        receiverId: this.cachedIdMap.get(receiverStoreId),
+      },
+      skip: offset,
+      take: pageSize,
+      relations: historyRelations,
+    });
+
+    const response = historyRecords.map(record => this.mapEntityToResponseObject(record))
+   
+
+    return {[receiverStoreId]:response};
   }
+
 
   mapEntityToResponseObject(historyRecord: DeliveryHistory): DeliveryHistoryRO {
     return plainToInstance(
@@ -72,30 +111,45 @@ export class DeliveryHistoryService {
     );
   }
 
-  async deliver(dto: CreateDeliveryHistoryDto):Promise<DeliveryHistoryRO[]> {
+  async deliver(dto: CreateDeliveryHistoryDto): Promise<DeliveryHistoryRO[]> {
 
     //Check if there is any receiver
     if (!dto.receiverList?.length) {
       throw new BadRequestException("Receiver list cannot be empty!");
     }
 
-
-    const sender = await this.storeService.findStoreByStoreId(dto.senderStoreId);
+    const senderRelations = [
+      StoreRelation.ADMIN,
+      StoreRelation.LATEST_DELIVERY,
+      StoreRelation.CHILD_SHOPS
+    ]
+    const sender = await this.storeService.findStoreByStoreId(dto.senderStoreId, senderRelations);
 
     //Check if sender is busy
     const senderLatestDelivery = sender.latestDelivery;
     const isSenderProceedable = !senderLatestDelivery || senderLatestDelivery.transactionStatus === false;
+
+    //Comment this for load testing
     if (!isSenderProceedable) throw new BadRequestException('Sender is currently in a delivery process.');
 
     //Ensure uniqueness
     const uniqueReceiverUUIDs = [...new Set(dto.receiverList)];
-    const candidates = await this.storeService.findStoresByStoreIdList(uniqueReceiverUUIDs);
+    const candidateRelations = [
+      StoreRelation.LATEST_DELIVERY,
+      StoreRelation.ADMIN
+    ]
+    const candidates = await this.storeService.findStoresByStoreIdList(uniqueReceiverUUIDs, candidateRelations);
+    const admin = sender.admin;
     const receivers: Store[] = [];
+
+    //Comment the following block for load testing
+    //START
     for (const receiver of candidates) {
-      //Prevent self-sending
-      if (receiver.id === sender.id) {
+      //Prevent self-sending and sending to different HQ
+      if (receiver.id === sender.id || admin?.id !== receiver.admin?.id) {
         continue;
       }
+
 
       //In case receiverStore is a shop managed by sender
       const isManagedShop = sender.childShops.some(childShop => childShop.id === receiver.id);
@@ -109,18 +163,27 @@ export class DeliveryHistoryService {
         receivers.push(receiver);
       }
     }
+    // END
+    //Comment the above block for load testing
+
+    // Uncomment this for load testing
+    // candidates.map(candidate => receivers.push(candidate));
+
+    if (!receivers.length) {
+      throw new BadRequestException("Found no deliverable receivers!");
+    }
 
 
     //Prepare folder name
-    const adminId = sender.admin.adminId;
+    const adminId = admin.adminId;
     const senderStoreId = sender.storeId;
     const receiverStoreIds = receivers.map(receiver => receiver.storeId);
 
     //Prepare file path
-    const baseDir = path.resolve(process.cwd(), 'delivery_data', adminId);
-    const sourcePath = path.join(baseDir, senderStoreId);
+    const baseDir = path.resolve(process.cwd(), '..', 'data');
+    const hqPath = path.join(baseDir, adminId);
+    const sourcePath = path.join(hqPath, senderStoreId);
 
-    //--- START ---
     const deliveryRecords: DeliveryHistory[] = [];
     const senderErrors: ErrorDetail[] = [];
 
@@ -155,25 +218,35 @@ export class DeliveryHistoryService {
 
 
     try {
+      // Read the contents of the directory
+      const sourceGaeUpload = path.join(sourcePath, 'gae_upload');
+
       // Validate source folder existence
-      if (!await fs.pathExists(sourcePath)) {
-        throw new BadRequestException(`Source folder "${senderStoreId}" does not exist at ${sourcePath}`);
+      if (!await fs.pathExists(sourceGaeUpload)) {
+        throw new BadRequestException(`Source folder "${senderStoreId}/gae_upload" does not exist at ${sourceGaeUpload}`);
       }
-      if (!(await fs.lstat(sourcePath)).isDirectory()) {
-        throw new BadRequestException(`Source "${senderStoreId}" is not a directory.`);
+      if (!(await fs.lstat(sourceGaeUpload)).isDirectory()) {
+        throw new BadRequestException(`Source "${senderStoreId}/gae_upload" is not a directory.`);
       }
+
+      //Comment the following block for load testing
+      //START
+      const items = await fs.readdir(sourceGaeUpload);
+      if (!items?.length) {
+        throw new BadRequestException(`There is no items to deliver from source directory:"${senderStoreId}/gae_upload"`);
+      }
+      //END
+      //Comment the above block for load testing
 
       //Iterate through receiverList
       for (const receiver of receivers) {
         const receiverStoreId = receiver.storeId;
-        const destinationPath = path.join(baseDir, receiverStoreId);
+        const destinationPath = path.join(hqPath, receiverStoreId);
         const receiverErrors: ErrorDetail[] = [];
 
 
         //Get start time of the current receiver
-        // Assign a default value to receiverEndTime
         const receiverStartTime = new Date();
-        let receiverEndTime = receiverStartTime;
 
         const receiverDelivery = this.deliveryHistoryRepository.create({
           startDateTime: receiverStartTime,
@@ -202,63 +275,44 @@ export class DeliveryHistoryService {
         await this.latestDeliveryService.upsertLatestDelivery(receiverLatest);
 
         try {
+
           // Validate destination folder existence 
           if (!await fs.pathExists(destinationPath)) {
-            //Get errored time of the current receiver 
-            receiverEndTime = new Date();
-            const errorDetail: ErrorDetail = {
-              errorCode: HttpStatus.BAD_REQUEST.toString(),
-              errorMessage: `Destination folder "${receiverStoreId}" does not exist. Skipping.`
-            };
-
-            //Append error to receiver
-            receiverErrors.push(errorDetail)
-
+            throw new BadRequestException(`Destination folder "${receiverStoreId}" does not exist. Skipping.`);
 
           }
 
           if (!(await fs.lstat(destinationPath)).isDirectory()) {
-            //Get errored time of the current receiver 
-            receiverEndTime = new Date();
-            const errorDetail: ErrorDetail = {
-              errorCode: HttpStatus.BAD_REQUEST.toString(),
-              errorMessage: `Destination "${receiverStoreId}" is not a directory. Skipping.`
-            };
-
-            //Append error to receiver
-            receiverErrors.push(errorDetail)
-
+            throw new BadRequestException(`Destination "${receiverStoreId}" is not a directory. Skipping.`)
           }
 
-          //Perform copy only if no error
-          if (receiverErrors.length > 0) {
-            insertedReceiver.endDateTime = receiverLatest.endDateTime = receiverEndTime;
-            insertedReceiver.errors = receiverLatest.errors = receiverErrors;
-          }
-          else {
-            // Perform the copy operation
-            // `copy` recursively copies files and directories.
-            // `overwrite: true` means existing files in destination will be overwritten.
-            await fs.copy(sourcePath, destinationPath, { overwrite: true });
+          //Ensure gae_upload exists
+          const destGaeUpload = path.join(destinationPath, 'gae_upload');
+          await fs.ensureDir(destGaeUpload);
 
-            //Get completed time of the current receiver 
-            insertedReceiver.endDateTime = receiverLatest.endDateTime = new Date();
-            console.log(`Copied content from "${senderStoreId}" to "${receiverStoreId}"`);
-          }
+          // Perform the copy operation
+          // `copy` recursively copies files and directories.
+          // `overwrite: true` means existing files in destination will be overwritten.
+          await fs.copy(sourceGaeUpload, destGaeUpload, { overwrite: true });
 
-
-
-        } catch (error) {
-          //Get errored time of the current receiver 
+          //Get completed time of the current receiver 
           insertedReceiver.endDateTime = receiverLatest.endDateTime = new Date();
-          const unknownError: ErrorDetail = {
-            errorCode: HttpStatus.INTERNAL_SERVER_ERROR.toString(),
-            errorMessage: `An error occured while copying content from "${senderStoreId}" to "${receiverStoreId}", ${error}`
-          }
+          console.log(`Copied content from "${senderStoreId}" to "${receiverStoreId}"`);
+
+
+
+
+        } catch (error: unknown) {
+          const context = `while copying content from "${senderStoreId}" to "${receiverStoreId}".`;
+          const errorDetail: ErrorDetail = getErrorDetail(error, context);
+
           //Append error to receiver
-          receiverErrors.push(unknownError);
+          receiverErrors.push(errorDetail);
           insertedReceiver.errors = receiverLatest.errors = receiverErrors;
 
+          //Get errored time of the current receiver 
+          insertedReceiver.endDateTime = receiverLatest.endDateTime = new Date();
+          console.log("An error occured on receiver side:", errorDetail.errorMessage);
         }
 
         insertedReceiver.transactionStatus = receiverLatest.transactionStatus = false;
@@ -275,43 +329,29 @@ export class DeliveryHistoryService {
       }
 
 
+      //Get completion time of sender after going through all iterations
+      insertedSender.endDateTime = senderLatest.endDateTime = new Date();
 
-    } catch (error) {
+
+    } catch (error: unknown) {
+
+      const context = `while copying content from "${senderStoreId}"`;
+      const errorDetail = getErrorDetail(error, context);
+      //Append error to sender
+      senderErrors.push(errorDetail);
+
       //Get errored time of sender
       insertedSender.endDateTime = senderLatest.endDateTime = new Date();
 
-      //Resolve errorDetail
-      let errorCode = '';
-      const errorMessage = error.message;
-
-      if (error instanceof BadRequestException) {
-        errorCode = HttpStatus.BAD_REQUEST.toString();
-      }
-      else if (error instanceof Error || error instanceof InternalServerErrorException) {
-        errorCode = HttpStatus.INTERNAL_SERVER_ERROR.toString();
-      }
-      else {
-        errorCode = 'UNKNOWN'
-      }
-
-      //Append error to sender
-      senderErrors.push({
-        errorCode: errorCode,
-        errorMessage: errorMessage
-      });
-
-      console.log('An error occured:', errorCode, errorMessage);
+      console.log('An error occured on sender side:', errorDetail.errorMessage);
 
     }
 
     // Update errors if any
-    // Else update completion time
     if (senderErrors.length > 0) {
       insertedSender.errors = senderLatest.errors = senderErrors;
     }
-    else {
-      insertedSender.endDateTime = senderLatest.endDateTime = new Date();
-    }
+
     insertedSender.transactionStatus = senderLatest.transactionStatus = false;
 
     const updatedSender = await this.deliveryHistoryRepository.save(insertedSender);
@@ -323,125 +363,6 @@ export class DeliveryHistoryService {
   }
 
 
-  //Create new record for sender and respective receivers
-  async create(dto: CreateDeliveryHistoryDto): Promise<DeliveryHistoryRO[]> {
-
-    //Check if there is any receiver
-    if (!dto.receiverList?.length) {
-      throw new BadRequestException("Receiver list cannot be empty!");
-    }
-
-    const sender = await this.storeService.findStoreByStoreId(dto.senderStoreId);
-
-    //Check if sender is busy
-    const senderLatestDelivery = sender.latestDelivery;
-    const isSenderProceedable = !senderLatestDelivery || senderLatestDelivery.transactionStatus === false;
-    if (!isSenderProceedable) throw new BadRequestException('Sender is currently in a delivery process.');
-
-    //Ensure uniqueness
-    const uniqueReceiverUUIDs = [...new Set(dto.receiverList)];
-    const candidates = await this.storeService.findStoresByStoreIdList(uniqueReceiverUUIDs);
-    const receivers: Store[] = [];
-    for (const receiver of candidates) {
-      //Prevent self-sending
-      if (receiver.id === sender.id) {
-        continue;
-      }
-
-      //In case receiverStore is a shop managed by sender
-      const isManagedShop = sender.childShops.some(childShop => childShop.id === receiver.id);
-
-      //Check if receiver is busy
-      const receiverLatestDelivery = receiver.latestDelivery;
-      const isReceiverProceedable =
-        !receiverLatestDelivery
-        || receiverLatestDelivery.transactionStatus === false;
-      if ((isManagedShop || receiver.storeType === 'group') && isReceiverProceedable) {
-        receivers.push(receiver);
-      }
-    }
-
-    const now = new Date();
-
-
-
-    ///////////////////////////////////
-
-    const deliveryRecords: DeliveryHistory[] = [];
-    const latestDeliveries: LatestDelivery[] = [];
-
-    const errorList: ErrorDetail[] = dto.errors?.length
-      ? dto.errors.map(err => (
-        {
-          errorCode: err.errorCode || "",
-          errorMessage: err.errorMessage || "",
-        }
-      ))
-      : [];
-
-    // Create sender delivery record
-    const senderDelivery = this.deliveryHistoryRepository.create({
-      ...dto,
-      startDateTime: now,
-      endDateTime: now,
-      senderStore: sender,
-      transactionType: 'send',
-      transactionStatus: true,
-      errors: errorList,
-    });
-    deliveryRecords.push(senderDelivery);
-
-    const senderLatest: LatestDelivery = {
-      storeIdPK: sender.id,
-      store: sender,
-      startDateTime: now,
-      endDateTime: now,
-      transactionType: 'send',
-      transactionStatus: true,
-      receiverList: dto.receiverList,
-      errors: errorList,
-    };
-    latestDeliveries.push(senderLatest);
-
-    // Create receiver delivery records
-    for (const receiver of receivers) {
-      const receiverDelivery = this.deliveryHistoryRepository.create({
-        startDateTime: now,
-        endDateTime: now,
-        senderStore: sender,
-        receiverStore: receiver,
-        transactionStatus: true,
-        transactionType: 'receive',
-        receiverList: [],
-        errors: [],
-      });
-      deliveryRecords.push(receiverDelivery);
-
-      const receiverLatest: LatestDelivery = {
-        storeIdPK: receiver.id,
-        store: receiver,
-        startDateTime: now,
-        endDateTime: now,
-        transactionType: 'receive',
-        transactionStatus: true,
-        receiverList: [],
-        errors: [],
-      };
-      latestDeliveries.push(receiverLatest);
-    }
-
-    //Save the insertion
-    const insertResult = await this.deliveryHistoryRepository.save(deliveryRecords);
-    await Promise.all(latestDeliveries.map(
-      latestDeli => this.latestDeliveryService.upsertLatestDelivery(latestDeli)));
-
-    const returnResult: DeliveryHistoryRO[] = [];
-    insertResult.forEach(res => {
-      returnResult.push(this.mapEntityToResponseObject(res))
-    })
-
-    return returnResult;
-  }
 
   //Update attribute of a record
   async update(id: number, dto: UpdateDeliveryHistoryDto): Promise<DeliveryHistoryRO> {
@@ -453,7 +374,7 @@ export class DeliveryHistoryService {
     if (!delivery) throw new NotFoundException(`Delivery record ${id} not found.`);
 
     //Clean undefined value from dto
-    const cleanObj = instanceToPlain(dto,{
+    const cleanObj = instanceToPlain(dto, {
       exposeUnsetFields: false
     })
 
@@ -470,7 +391,7 @@ export class DeliveryHistoryService {
     if (cleanObj.transactionStatus && cleanObj.transactionStatus === false) {
       delivery.endDateTime = new Date();
     }
-    
+
     if (errors) {
       delivery.errors =
         errors.length
@@ -511,22 +432,20 @@ export class DeliveryHistoryService {
       ? delivery.senderStore
       : delivery.receiverStore;
 
-    if (!relatedStore) throw new NotFoundException(`Store not linked in delivery #${id}`);
+    if (!relatedStore) throw new NotFoundException(`Store not linked in delivery #${updatedRecord.id}`);
 
     const latest = await this.latestDeliveryService.findLatestDeliveryOfThisStore(
       relatedStore.id,
     );
 
     if (latest) {
-      Object.assign(latest,updatedRecord)
+      Object.assign(latest, updatedRecord)
 
       await this.latestDeliveryService.upsertLatestDelivery(latest);
     }
 
     return this.mapEntityToResponseObject(updatedRecord);
   }
-
-
 
 
 }

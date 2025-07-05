@@ -29,7 +29,7 @@ import { LatestDeliveryModule } from './latest-delivery/latest-delivery.module';
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
         synchronize: false,         // Turn off sync!
         migrationsRun: false,        // Auto-run migrations on app start
-        logging: true,
+        logging: false,             //Show queries
       }),
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),

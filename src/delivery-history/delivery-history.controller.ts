@@ -13,6 +13,7 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/s
 import { DeliveryHistoryService } from './delivery-history.service';
 import { CreateDeliveryHistoryDto } from './dto/create-delivery-history.dto';
 import { UpdateDeliveryHistoryDto } from './dto/update-delivery-history.dto';
+import { FindDeliveryHistoryDto } from './dto/find-delivery-history.dto';
 import { DeliveryHistory } from './delivery-history.entity';
 import { DeliveryHistoryRO } from './ro/delivery-history.ro';
 
@@ -21,56 +22,37 @@ import { DeliveryHistoryRO } from './ro/delivery-history.ro';
 export class DeliveryHistoryController {
   constructor(private readonly deliveryService: DeliveryHistoryService) { }
 
-  @Get("receiving/:receiverStoreId")
-  @ApiOperation({ summary: "Find all receiving records of this recevierStore by its storeId" })
-  @ApiParam({
-    name: "receiverStoreId",
-    type: String,
-    format: "UUID",
-    description: "storeId of the receiverStore"
-  })
+  @Get("receiving")
+  @ApiOperation({ summary: "Find paginated receiving records by receiverStoreId" })
   @ApiResponse({
     status: 200,
     description: "List of receiving records of the receiverStore",
     type: [DeliveryHistoryRO],
   })
+  @ApiResponse({ status: 400, description: "Invalid input." })
   @ApiResponse({ status: 404, description: "receiverStore not found." })
-  async findReceiverHistoryByReceiverStoreId(
-    @Param('receiverStoreId', new ParseUUIDPipe({ version: '4' })) receiverStoreId: string)
-    : Promise<DeliveryHistoryRO[]> {
-    return await this.deliveryService.findReceivingHistoryByReceiverStoreId(receiverStoreId);
+  async findReceiverHistoryByQuery(
+    @Query() query: FindDeliveryHistoryDto
+  ): Promise<Record<string,DeliveryHistoryRO[]>> {
+    return await this.deliveryService.findReceivingHistoryByReceiverStoreId(query);
   }
 
 
-
-
-  @Get('sending/:receiverStoreId')
+  @Get('sending')
   @ApiOperation({ summary: "Find all sending records to this receiverStore by its storeId" })
-  @ApiParam({
-    name: "receiverStoreId",
-    type: String,
-    format: "UUID",
-    description: "storeId of the receiverStore"
-  })
   @ApiResponse({
     status: 200,
     description: "List of sending records to the receiverStore",
     type: [DeliveryHistoryRO],
   })
-  @ApiResponse({ status: 404, description: "receiverStore not found." })
+  @ApiResponse({ status: 400, description: "Bad Request" })
+  @ApiResponse({ status: 404, description: "Sending records not found." })
   async findSenderHistoryByReceiverStoreId(
-    @Param('receiverStoreId', new ParseUUIDPipe({ version: '4' })) receiverStoreId: string)
-    : Promise<DeliveryHistoryRO[]> {
-    return await this.deliveryService.findSendingHistoryByReceiverStoreId(receiverStoreId);
+    @Query() query: FindDeliveryHistoryDto
+  ): Promise<DeliveryHistoryRO[]> {
+    return await this.deliveryService.findSendingHistoryByReceiverStoreId(query);
   }
 
-  @Post('create')
-  @ApiOperation({ summary: 'Create delivery history records (sender,receivers)' })
-  @ApiResponse({ status: 201, description: 'The delivery history records were successfully created.' })
-  @ApiBody({ type: CreateDeliveryHistoryDto })
-  async create(@Body() dto: CreateDeliveryHistoryDto) {
-    return await this.deliveryService.create(dto);
-  }
 
   @Post('deliver')
   @ApiOperation({ summary: 'Deliver assets from sender to receivers and create delivery history records' })
@@ -81,7 +63,8 @@ export class DeliveryHistoryController {
   @ApiResponse({ status: 400, description: 'Invalid request body' })
   @ApiResponse({ status: 500, description: 'Internal server error' })
   @ApiBody({ type: CreateDeliveryHistoryDto })
-  async deliver(@Body() dto: CreateDeliveryHistoryDto) {
+  async deliver(@Body() dto: CreateDeliveryHistoryDto)
+  :Promise<DeliveryHistoryRO[]> {
     return await this.deliveryService.deliver(dto);
   }
 
@@ -91,7 +74,8 @@ export class DeliveryHistoryController {
   @ApiResponse({ status: 200, description: 'The delivery history was updated.' })
   @ApiResponse({ status: 404, description: 'The delivery history could not be found.' })
   @ApiBody({ type: UpdateDeliveryHistoryDto })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeliveryHistoryDto) {
+  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeliveryHistoryDto)
+  :Promise<DeliveryHistoryRO> {
     return await this.deliveryService.update(id, dto);
   }
 

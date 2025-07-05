@@ -31,11 +31,11 @@ export class DeliveryHistoryRO {
     
     @Expose()
     @Transform(
-        ({obj}) => obj.transactionStatus === false 
-        ? DeliveryStatus.COMPLETED
+        ({obj}) => obj.transactionStatus === true 
+        ? DeliveryStatus.IN_PROGRESS
         : obj.errors?.length
         ? DeliveryStatus.ERRORED
-        : DeliveryStatus.IN_PROGRESS
+        : DeliveryStatus.COMPLETED
     )
     deliveryStatus: DeliveryStatus;
     

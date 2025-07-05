@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { Store } from '../store/store.entity';
-import {ErrorDetail} from '../common/interfaces/error-detail.interface';
+import { ErrorDetail } from '../common/interfaces/error-detail.interface';
 
 @Entity('delivery_history')
 export class DeliveryHistory {
@@ -14,6 +14,9 @@ export class DeliveryHistory {
     endDateTime: Date;
 
     //Start of Store as receiver relationship
+    @Column({nullable: true})
+    receiverId: number;
+
     @Index()
     @ManyToOne(
         () => Store, (store) => store.receivedDeliveries, {
@@ -26,6 +29,9 @@ export class DeliveryHistory {
 
 
     //Start of Store as sender relationship
+    @Column({ nullable: true })
+    senderId: number;
+
     @Index()
     @ManyToOne(
         () => Store, (store) => store.sentDeliveries, {
@@ -43,9 +49,9 @@ export class DeliveryHistory {
     @Column({ type: 'text', enum: ['send', 'receive'] })
     transactionType: string;
 
-    @Column({ type: 'jsonb',nullable: true, default: []})
+    @Column({ type: 'jsonb', nullable: true, default: [] })
     receiverList: string[];
 
-    @Column({ type: 'jsonb', nullable: true, default: [] }) 
-    errors: ErrorDetail[]; 
+    @Column({ type: 'jsonb', nullable: true, default: [] })
+    errors: ErrorDetail[];
 }
