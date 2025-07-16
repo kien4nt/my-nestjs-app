@@ -8,6 +8,7 @@ import { StoreModule } from './store/store.module';
 import { DeliveryHistoryModule } from './delivery-history/delivery-history.module';
 import { LatestDeliveryModule } from './latest-delivery/latest-delivery.module';
 import * as fs from 'fs'; // Import fs to read the SSL certificate file
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -30,17 +31,18 @@ import * as fs from 'fs'; // Import fs to read the SSL certificate file
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
         synchronize: false,         // Turn off sync!
         migrationsRun: false,        // Auto-run migrations on app start
-        logging: false,             //Show queries
+        logging: true,             //Show queries
         extra:{
           max: 20, // Set maximum number of connections in the pool
-          ssl:{
-            ca: fs.readFileSync(configService.get<string>('RDS_CA_PATH')
-            || '/home/ec2-user/ap-southeast-1-bundle.pem').toString(),
-          }
+          // ssl:{
+          //   ca: fs.readFileSync(configService.get<string>('RDS_CA_PATH')
+          //   || '/home/ec2-user/ap-southeast-1-bundle.pem').toString(),
+          // }
         },
       }),
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),
+    ScheduleModule.forRoot(), // Import ScheduleModule for scheduling tasks
     // Import application modules
     AdminModule, StoreModule, DeliveryHistoryModule, LatestDeliveryModule
   ],

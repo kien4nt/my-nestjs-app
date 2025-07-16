@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { DeliveryHistory } from './delivery-history.entity';
 import { CreateDeliveryHistoryDto } from './dto/create-delivery-history.dto';
 import { UpdateDeliveryHistoryDto } from './dto/update-delivery-history.dto';
@@ -17,6 +17,8 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { FindDeliveryHistoryDto } from './dto/find-delivery-history.dto';
 import { DeliveryHistoryRelation, StoreRelation } from 'src/common/enums/relations.enum';
+import { Cron } from '@nestjs/schedule';
+import { time } from 'console';
 
 
 
@@ -444,6 +446,39 @@ export class DeliveryHistoryService {
     }
 
     return this.mapEntityToResponseObject(updatedRecord);
+  }
+
+
+  // Schedule to run every 3 months.
+  // This cron expression (0 0 1 */3 *) means:
+  // - 0: at minute 0
+  // - 0: at hour 0 (midnight)
+  // - 1: on day-of-month 1
+  // - */3: every 3rd month
+  // - *: any day of the week
+  // You might want to adjust the exact timing based on your needs.
+  @Cron('0 0 1 */3 *',{
+    timeZone: 'Asia/Ho_Chi_Minh' // Adjust the timezone as needed
+  }
+  )
+  async handleHistoryCleanup() {
+    console.log('Starting database cleanup for DeliveryHistory...');
+
+    try {
+      // Calculate the date 3 months ago
+      const threeMonthsAgo = new Date();
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+      const result = await this.deliveryHistoryRepository.delete({
+        startDateTime: LessThan(threeMonthsAgo),
+      });
+
+      console.log(
+        `Database cleanup for DeliveryHistory completed. Deleted ${result.affected} records older than ${threeMonthsAgo.toISOString()}.`,
+      );
+    } catch (error) {
+      console.error('Error during database cleanup:', error.stack);
+    }
   }
 
 
