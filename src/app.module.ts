@@ -31,13 +31,13 @@ import { ScheduleModule } from '@nestjs/schedule';
         migrations: [__dirname + '/migrations/*{.ts,.js}'],
         synchronize: false,         // Turn off sync!
         migrationsRun: false,        // Auto-run migrations on app start
-        logging: true,             //Show queries
+        logging: false,             //Show queries
         extra:{
           max: 20, // Set maximum number of connections in the pool
-          // ssl:{
-          //   ca: fs.readFileSync(configService.get<string>('RDS_CA_PATH')
-          //   || '/home/ec2-user/ap-southeast-1-bundle.pem').toString(),
-          // }
+          ssl:{
+            ca: fs.readFileSync(configService.get<string>('RDS_CA_PATH')
+            || '/home/ec2-user/ap-southeast-1-bundle.pem').toString(),
+          }
         },
       }),
       inject: [ConfigService], // Inject ConfigService to use in useFactory
