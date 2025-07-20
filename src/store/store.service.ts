@@ -5,6 +5,8 @@ import { Store } from './store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { v4 as uuidv4 } from 'uuid';
 import { StoreRelation } from 'src/common/enums/relations.enum';
+import { plainToInstance } from 'class-transformer';
+import { StoreRO } from './ro/store.ro';
 
 @Injectable()
 export class StoreService {
@@ -13,10 +15,10 @@ export class StoreService {
     private storeRepository: Repository<Store>,
   ) { }
 
-  
+
   //Find All Stores
   async findAllStores(storeRelations: StoreRelation[] = []): Promise<Store[]> {
-    return await this.storeRepository.find({relations:storeRelations});
+    return await this.storeRepository.find({ relations: storeRelations });
   }
 
 
@@ -33,14 +35,14 @@ export class StoreService {
   }
 
 
-   //Find Stores By a list of storeIds
-  async findStoresByStoreIdList(storeIdList: string[],storeRelations: StoreRelation[] = []): Promise<Store[]> {
+  //Find Stores By a list of storeIds
+  async findStoresByStoreIdList(storeIdList: string[], storeRelations: StoreRelation[] = []): Promise<Store[]> {
     const stores = await this.storeRepository.find({
-        where: {
-          storeId: In(storeIdList),
-        },
-        relations: storeRelations
-      });
+      where: {
+        storeId: In(storeIdList),
+      },
+      relations: storeRelations
+    });
 
     if (!stores?.length) {
       throw new NotFoundException(`Found no store from the provided storeIds.`);
@@ -57,7 +59,7 @@ export class StoreService {
   }
 
   //Find Shops Managed By This Group
-  async findChildShopsOfThisGroup(storeId: string,storeRelations: StoreRelation[] = [StoreRelation.PARENT_GROUP]): Promise<Store[]> {
+  async findChildShopsOfThisGroup(storeId: string, storeRelations: StoreRelation[] = [StoreRelation.PARENT_GROUP]): Promise<Store[]> {
     const group = await this.findStoreByStoreId(storeId);
     return await this.storeRepository.find({
       where: { parentGroup: { id: group.id } },
@@ -66,8 +68,8 @@ export class StoreService {
   }
 
   //Find Stores Under The Same Admin As This Group
-  async findStoresUnderTheSameAdminAsThisGroup(storeId: string,storeRelations: StoreRelation[] = []): Promise<Store[]> {
-    const group = await this.findStoreByStoreId(storeId,[StoreRelation.ADMIN]);
+  async findStoresUnderTheSameAdminAsThisGroup(storeId: string, storeRelations: StoreRelation[] = []): Promise<Store[]> {
+    const group = await this.findStoreByStoreId(storeId, [StoreRelation.ADMIN]);
 
     const stores = await this.storeRepository.find({
       where: { admin: { id: group.admin.id } },
@@ -105,6 +107,15 @@ export class StoreService {
       }
     }
     throw new InternalServerErrorException('Failed to create Store after multiple UUID retries.');
+  }
+
+  mapEntityToResponseObject(store: Store): StoreRO {
+    return plainToInstance(
+      StoreRO, store,
+      {
+        excludeExtraneousValues: true,
+      }
+    );
   }
 
 }
