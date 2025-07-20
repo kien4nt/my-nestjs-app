@@ -89,4 +89,7 @@ export class Store {
     eager: false, // Don't load automatically by default
   })
   latestDelivery: LatestDelivery;
+
+  @Column({type:'boolean',default:true})
+  isActive: boolean;
 }
