@@ -4,10 +4,12 @@ import { AdminService } from './admin.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Admin } from './admin.entity';
 import { Store } from '../store/store.entity'
+import { StoreModule } from 'src/store/store.module';
 
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Admin, Store])],
+  imports: [TypeOrmModule.forFeature([Admin, Store])
+,StoreModule],
   controllers: [AdminController],
   providers: [AdminService],
   exports: [AdminService]

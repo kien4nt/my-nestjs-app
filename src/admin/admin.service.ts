@@ -12,6 +12,9 @@ import * as path from 'path';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 import { plainToInstance } from 'class-transformer';
 import { AdminRO } from './ro/admin.ro';
+import { StoreRO } from 'src/store/ro/store.ro';
+import { StoreService } from 'src/store/store.service';
+import { StoreRelation } from 'src/common/enums/relations.enum';
 
 @Injectable()
 export class AdminService {
@@ -19,7 +22,8 @@ export class AdminService {
     @InjectRepository(Admin)
     private adminRepository: Repository<Admin>,
     @InjectRepository(Store)
-    private storeRepository: Repository<Store>
+    private storeRepository: Repository<Store>,
+    private readonly storeService: StoreService,
   ) { }
 
 
@@ -41,7 +45,7 @@ export class AdminService {
         result += `ERROR: Error ensuring directory ${hqDitPath}: ${err}\n`;
       }
 
-      const stores = await this.findStoresUnderThisAdmin(adminId);
+      const stores = await this.fetchStoresByAdminId(adminId);
       for (const store of stores) {
         const storeId = store.storeId;
         const dirPath = path.join(base_dir, adminId, storeId, 'gae_upload');
@@ -73,19 +77,32 @@ export class AdminService {
     return admin;
   }
 
-  //Find All Stores Under This Admin
-  async findStoresUnderThisAdmin(adminId: string): Promise<Store[]> {
+  //Caller method to find stores by adminId
+  async findStoresUnderThisAdmin(adminId: string): Promise<Record<string, StoreRO[]>> {
+    const relations = [StoreRelation.PARENT_GROUP];
+    const stores = await this.fetchStoresByAdminId(adminId, relations);
+    const response = stores.map(store => this.storeService.mapEntityToResponseObject(store));
+    return {
+      [adminId]: response
+    }
+  }
+
+  //Fetch stores by adminId
+  async fetchStoresByAdminId(adminId:string, relations:StoreRelation[] = []): Promise<Store[]>{
     const admin = await this.fecthAdminDataByAdminId(adminId);
 
-    return await this.storeRepository.find({
+    const stores = await this.storeRepository.find({
       where: {
         admin: {
           id: admin.id
         }
       },
-      relations: ['admin'],
+      relations: relations
     });
-
+    if (!stores || stores.length === 0) {
+      throw new NotFoundException(`No stores found for admin ${adminId}`);
+    }
+    return stores; 
   }
 
   // Create Admin with UUID retry logic
@@ -133,8 +150,9 @@ export class AdminService {
   async deactivate(adminId: string): Promise<AdminRO> {
     const admin = await this.fecthAdminDataByAdminId(adminId);
 
-    // Set isActive to false instead of deleting
-    admin.isActive = false;
+    // Change active status
+    const newStatus = !admin.isActive;
+    admin.isActive = newStatus;
     return this.mapEntityToResponseObject(
       await this.adminRepository.save(admin)
     );
