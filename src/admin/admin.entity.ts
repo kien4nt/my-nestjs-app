@@ -19,4 +19,7 @@ export class Admin {
     eager: false
   })
   stores: Store[];
+
+  @Column({type:'boolean',default:true})
+  isActive: boolean;
 }
