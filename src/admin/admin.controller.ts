@@ -8,6 +8,7 @@ import { catchError } from 'rxjs';
 import { UuidDto } from 'src/common/dtos/uuid.dto';
 import { AdminRO } from './ro/admin.ro';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { StoreRO } from 'src/store/ro/store.ro';
 
 @ApiTags('admins')
 @Controller('admins')
@@ -21,7 +22,7 @@ export class AdminController {
     @ApiResponse({ status: 404, description: 'Admin not found.' })
     @ApiResponse({ status: 400, description: 'Invalid UUID format.' })
     async findStoresUnderThisAdmin(@Param() dto: UuidDto,)
-        : Promise<Store[]> {
+        : Promise<Record<string,StoreRO[]>> {
         return await this.AdminService.findStoresUnderThisAdmin(dto.uuid);
     }
 
