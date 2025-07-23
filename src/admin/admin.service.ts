@@ -62,25 +62,25 @@ export class AdminService {
 
   //Caller method to find admin by adminId
   async findAdminByAdminId(adminId: string): Promise<AdminRO> {
-    return this.mapEntityToResponseObject(
-      await this.fecthAdminDataByAdminId(adminId)
-    );
-  }
-
-  //Fetch the admin data by adminId
-  async fecthAdminDataByAdminId(adminId: string): Promise<Admin> {
-    const admin = await this.adminRepository.findOne({ where: { adminId } });
+    const admin = await this.fecthAdminDataByAdminId(adminId);
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found`);
     }
+    return this.mapEntityToResponseObject(admin);
+  }
 
-    return admin;
+  //Fetch the admin data by adminId
+  async fecthAdminDataByAdminId(adminId: string): Promise<Admin | null> {
+    return await this.adminRepository.findOne({ where: { adminId } });
   }
 
   //Caller method to find stores by adminId
   async findStoresUnderThisAdmin(adminId: string): Promise<Record<string, StoreRO[]>> {
     const relations = [StoreRelation.PARENT_GROUP];
     const stores = await this.fetchStoresByAdminId(adminId, relations);
+    if (!stores || stores.length === 0) {
+      throw new NotFoundException(`No stores found for admin ${adminId}`);
+    }
     const response = stores.map(store => this.storeService.mapEntityToResponseObject(store));
     return {
       [adminId]: response
@@ -90,7 +90,9 @@ export class AdminService {
   //Fetch stores by adminId
   async fetchStoresByAdminId(adminId:string, relations:StoreRelation[] = []): Promise<Store[]>{
     const admin = await this.fecthAdminDataByAdminId(adminId);
-
+    if (!admin) {
+      throw new NotFoundException(`Admin ${adminId} not found`);
+    }
     const stores = await this.storeRepository.find({
       where: {
         admin: {
@@ -99,9 +101,7 @@ export class AdminService {
       },
       relations: relations
     });
-    if (!stores || stores.length === 0) {
-      throw new NotFoundException(`No stores found for admin ${adminId}`);
-    }
+    
     return stores; 
   }
 
@@ -138,7 +138,9 @@ export class AdminService {
 
   async update(adminId: string, updateData: UpdateAdminDto): Promise<AdminRO> {
     const admin = await this.fecthAdminDataByAdminId(adminId);
-
+    if (!admin) {
+      throw new NotFoundException(`Admin ${adminId} not found`);
+    }
     // Update the admin entity with new data
     Object.assign(admin, updateData);
 
@@ -149,7 +151,9 @@ export class AdminService {
 
   async deactivate(adminId: string): Promise<AdminRO> {
     const admin = await this.fecthAdminDataByAdminId(adminId);
-
+    if (!admin) {
+      throw new NotFoundException(`Admin ${adminId} not found`);
+    }
     // Change active status
     const newStatus = !admin.isActive;
     admin.isActive = newStatus;
