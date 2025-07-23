@@ -3,13 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { DeliveryHistory } from './delivery-history.entity';
 import { CreateDeliveryHistoryDto } from './dto/create-delivery-history.dto';
-import { UpdateDeliveryHistoryDto } from './dto/update-delivery-history.dto';
 import { StoreService } from '../store/store.service';
 import { LatestDeliveryService } from '../latest-delivery/latest-delivery.service';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 import { Store } from '../store/store.entity';
 import { DeliveryHistoryRO } from './ro/delivery-history.ro';
-import { instanceToPlain, plainToInstance } from 'class-transformer';
+import { plainToInstance } from 'class-transformer';
 import { ErrorDetail, getErrorDetail } from 'src/common/interfaces/error-detail.interface';
 import { validateSync } from 'class-validator';
 import { UuidDto } from 'src/common/dtos/uuid.dto';
@@ -18,7 +17,7 @@ import * as path from 'path';
 import { FindDeliveryHistoryDto } from './dto/find-delivery-history.dto';
 import { DeliveryHistoryRelation, StoreRelation } from 'src/common/enums/relations.enum';
 import { Cron } from '@nestjs/schedule';
-import { time } from 'console';
+import { StoreType } from 'src/common/enums/store-type.enum';
 
 
 
@@ -45,7 +44,10 @@ export class DeliveryHistoryService {
     }
 
     if (!this.cachedIdMap.has(receiverStoreId)) {
-      const receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
+      const receiverStore = await this.storeService.fetchStoreByStoreId(receiverStoreId);
+      if (!receiverStore) {
+        throw new NotFoundException(`Receiver store ${receiverStoreId} not found.`);
+      }
       this.cachedIdMap.set(receiverStoreId, receiverStore.id);
     }
 
@@ -80,7 +82,10 @@ export class DeliveryHistoryService {
 
 
     if (!this.cachedIdMap.has(receiverStoreId)) {
-      const receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
+      const receiverStore = await this.storeService.fetchStoreByStoreId(receiverStoreId);
+      if (!receiverStore) {
+        throw new NotFoundException(`Receiver store ${receiverStoreId} not found.`);
+      }
       this.cachedIdMap.set(receiverStoreId, receiverStore.id);
     }
 
@@ -124,7 +129,16 @@ export class DeliveryHistoryService {
       StoreRelation.LATEST_DELIVERY,
       StoreRelation.CHILD_SHOPS
     ]
-    const sender = await this.storeService.findStoreByStoreId(dto.senderStoreId, senderRelations);
+    
+    const senderStoreIdFromDTO = dto.senderStoreId;
+    const sender = await this.storeService.fetchStoreByStoreId(senderStoreIdFromDTO, senderRelations);
+    if (!sender) {
+      throw new NotFoundException(`Sender store ${senderStoreIdFromDTO} not found.`);
+    }
+
+    if (sender.storeType !== StoreType.GROUP) {
+      throw new BadRequestException(`Sender store ${senderStoreIdFromDTO} must be a group.`);
+    }
 
     //Check if sender is busy
     const senderLatestDelivery = sender.latestDelivery;
@@ -139,7 +153,7 @@ export class DeliveryHistoryService {
       StoreRelation.LATEST_DELIVERY,
       StoreRelation.ADMIN
     ]
-    const candidates = await this.storeService.findStoresByStoreIdList(uniqueReceiverUUIDs, candidateRelations);
+    const candidates = await this.storeService.fetchStoresByStoreIdList(uniqueReceiverUUIDs, candidateRelations);
     const admin = sender.admin;
     const receivers: Store[] = [];
 
@@ -364,91 +378,6 @@ export class DeliveryHistoryService {
   }
 
 
-
-  //Update attribute of a record
-  async update(id: number, dto: UpdateDeliveryHistoryDto): Promise<DeliveryHistoryRO> {
-    const delivery = await this.deliveryHistoryRepository.findOne({
-      where: { id },
-      relations: ['senderStore', 'receiverStore'],
-    });
-
-    if (!delivery) throw new NotFoundException(`Delivery record ${id} not found.`);
-
-    //Clean undefined value from dto
-    const cleanObj = instanceToPlain(dto, {
-      exposeUnsetFields: false
-    })
-
-    //Separate errors from other properties of dto
-    const { errors, ...rest } = cleanObj;
-
-
-    // Update provided fields from dto except errors
-    Object.assign(delivery, rest);
-
-
-    // If explicitly marked completed -> update endDateTime
-    // Else update errors if any
-    if (cleanObj.transactionStatus && cleanObj.transactionStatus === false) {
-      delivery.endDateTime = new Date();
-    }
-
-    if (errors) {
-      delivery.errors =
-        errors.length
-          ? errors.map(err => (
-            {
-              errorCode: err.errorCode || "",
-              errorMessage: err.errorMessage || "",
-            }
-          ))
-          : [];
-    }
-
-    const receiverStoreId = cleanObj.receiverStoreId;
-    const senderStoreId = cleanObj.senderStoreId;
-
-    //Update sender, receiver if any
-    if (receiverStoreId) {
-      const receiverErrors = validateSync(new UuidDto(receiverStoreId));
-      if (receiverErrors.length > 0) {
-        throw new BadRequestException("Invalid receiverStoreId format!");
-      }
-      delivery.receiverStore = await this.storeService.findStoreByStoreId(receiverStoreId);
-    }
-
-    if (senderStoreId) {
-      const senderErrors = validateSync(new UuidDto(senderStoreId));
-      if (senderErrors.length > 0) {
-        throw new BadRequestException("Invalid senderStoreId format!");
-      }
-      delivery.senderStore = await this.storeService.findStoreByStoreId(senderStoreId);
-    }
-
-    //Save the update
-    const updatedRecord = await this.deliveryHistoryRepository.save(delivery);
-
-    // Sync latest-delivery of the related store
-    const relatedStore = updatedRecord.transactionType === 'send'
-      ? delivery.senderStore
-      : delivery.receiverStore;
-
-    if (!relatedStore) throw new NotFoundException(`Store not linked in delivery #${updatedRecord.id}`);
-
-    const latest = await this.latestDeliveryService.findLatestDeliveryOfThisStore(
-      relatedStore.id,
-    );
-
-    if (latest) {
-      Object.assign(latest, updatedRecord)
-
-      await this.latestDeliveryService.upsertLatestDelivery(latest);
-    }
-
-    return this.mapEntityToResponseObject(updatedRecord);
-  }
-
-
   // Schedule to run every 3 months.
   // This cron expression (0 0 1 */3 *) means:
   // - 0: at minute 0
@@ -480,6 +409,98 @@ export class DeliveryHistoryService {
       console.error('Error during database cleanup:', error.stack);
     }
   }
+
+  // //Update attribute of a record
+  // async update(id: number, dto: UpdateDeliveryHistoryDto): Promise<DeliveryHistoryRO> {
+  //   const delivery = await this.deliveryHistoryRepository.findOne({
+  //     where: { id },
+  //     relations: ['senderStore', 'receiverStore'],
+  //   });
+
+  //   if (!delivery) throw new NotFoundException(`Delivery record ${id} not found.`);
+
+  //   //Clean undefined value from dto
+  //   const cleanObj = instanceToPlain(dto, {
+  //     exposeUnsetFields: false
+  //   })
+
+  //   //Separate errors from other properties of dto
+  //   const { errors, ...rest } = cleanObj;
+
+
+  //   // Update provided fields from dto except errors
+  //   Object.assign(delivery, rest);
+
+
+  //   // If explicitly marked completed -> update endDateTime
+  //   // Else update errors if any
+  //   if (cleanObj.transactionStatus && cleanObj.transactionStatus === false) {
+  //     delivery.endDateTime = new Date();
+  //   }
+
+  //   if (errors) {
+  //     delivery.errors =
+  //       errors.length
+  //         ? errors.map(err => (
+  //           {
+  //             errorCode: err.errorCode || "",
+  //             errorMessage: err.errorMessage || "",
+  //           }
+  //         ))
+  //         : [];
+  //   }
+
+  //   const receiverStoreId = cleanObj.receiverStoreId;
+  //   const senderStoreId = cleanObj.senderStoreId;
+
+  //   //Update sender, receiver if any
+  //   if (receiverStoreId) {
+  //     const receiverErrors = validateSync(new UuidDto(receiverStoreId));
+  //     if (receiverErrors.length > 0) {
+  //       throw new BadRequestException("Invalid receiverStoreId format!");
+  //     }
+      
+  //     const receiverStore = await this.storeService.fetchStoreByStoreId(receiverStoreId);
+  //     if (!receiverStore) {
+  //       throw new NotFoundException(`Receiver store ${receiverStoreId} not found.`);
+  //     }
+  //     delivery.receiverStore = receiverStore;
+  //   }
+
+  //   if (senderStoreId) {
+  //     const senderErrors = validateSync(new UuidDto(senderStoreId));
+  //     if (senderErrors.length > 0) {
+  //       throw new BadRequestException("Invalid senderStoreId format!");
+  //     }
+  //     const senderStore = await this.storeService.fetchStoreByStoreId(senderStoreId);
+  //     if (!senderStore) {
+  //       throw new NotFoundException(`Sender store ${senderStoreId} not found.`);
+  //     }
+  //     delivery.senderStore = senderStore;
+  //   }
+
+  //   //Save the update
+  //   const updatedRecord = await this.deliveryHistoryRepository.save(delivery);
+
+  //   // Sync latest-delivery of the related store
+  //   const relatedStore = updatedRecord.transactionType === 'send'
+  //     ? delivery.senderStore
+  //     : delivery.receiverStore;
+
+  //   if (!relatedStore) throw new NotFoundException(`Store not linked in delivery #${updatedRecord.id}`);
+
+  //   const latest = await this.latestDeliveryService.fetchLatestDeliveryOfThisStore(
+  //     relatedStore.id,
+  //   );
+
+  //   if (latest) {
+  //     Object.assign(latest, updatedRecord)
+
+  //     await this.latestDeliveryService.upsertLatestDelivery(latest);
+  //   }
+
+  //   return this.mapEntityToResponseObject(updatedRecord);
+  // }
 
 
 }
