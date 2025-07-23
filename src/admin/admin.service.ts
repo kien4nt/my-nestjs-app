@@ -1,12 +1,10 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Admin } from './admin.entity'
 import { Store } from '../store/store.entity'
 import { Repository } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { validateSync } from 'class-validator';
-import { UuidDto } from 'src/common/dtos/uuid.dto';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { UpdateAdminDto } from './dto/update-admin.dto';
@@ -15,6 +13,8 @@ import { AdminRO } from './ro/admin.ro';
 import { StoreRO } from 'src/store/ro/store.ro';
 import { StoreService } from 'src/store/store.service';
 import { StoreRelation } from 'src/common/enums/relations.enum';
+import { CreateStoreDto } from 'src/store/dto/create-store.dto';
+import { StoreType } from 'src/common/enums/store-type.enum';
 
 @Injectable()
 export class AdminService {
@@ -161,6 +161,59 @@ export class AdminService {
       await this.adminRepository.save(admin)
     );
   }
+
+  // Create Store with UUID retry logic
+  async createStoreWithRetry(storeData: CreateStoreDto, maxRetries = 5): Promise<StoreRO> {
+    const adminId = storeData.adminId;
+    const admin = await this.fecthAdminDataByAdminId(adminId);
+    if (!admin) {
+      throw new NotFoundException(`Admin ${adminId} not found.`);
+    }
+    const adminIdPk = admin.id;
+
+    const parentGroupStoreId = storeData.parentGroupStoreId;
+    let parentGroup: Store | null = null;
+    if (parentGroupStoreId) {
+      parentGroup = await this.storeService.fetchStoreByStoreId(parentGroupStoreId);
+      if (!parentGroup || parentGroup.storeType !== StoreType.GROUP) {
+        throw new NotFoundException(`Parent group ${parentGroupStoreId} not found or is not a group.`);
+      }
+    }
+    
+    let attempts = 0;
+    while (attempts < maxRetries) {
+      attempts++;
+
+      try {
+        // Generate new UUID for storeId
+        const storeType = storeData.storeType;
+        const store = this.storeRepository.create({
+          ...storeData,
+          storeId: uuidv4(),
+          storeNameCode: storeData.storeName + storeData.storeCode,
+          admin: { id: adminIdPk , adminId: admin.adminId },
+          parentGroup: parentGroup && storeType === StoreType.SHOP 
+          ? {id: parentGroup.id, storeId: parentGroup.storeId}
+          : undefined,
+        });
+
+        return this.storeService.mapEntityToResponseObject(
+          await this.storeRepository.save(store));
+      } catch (error) {
+        // Check if unique violation on storeId UUID column
+        if (error.code === '23505' && error.detail && error.detail.includes('storeId')) {
+          // UUID collision detected, retry
+          console.warn(`UUID collision detected on attempt ${attempts}, retrying...`);
+          continue;
+        } else {
+          // Other errors bubble up
+          throw new InternalServerErrorException(error.message);
+        }
+      }
+    }
+    throw new InternalServerErrorException('Failed to create Store after multiple UUID retries.');
+  }
+
 
   mapEntityToResponseObject(admin: Admin): AdminRO {
     return plainToInstance(
