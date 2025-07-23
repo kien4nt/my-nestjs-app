@@ -2,19 +2,13 @@ import {
   Body,
   Controller,
   Get,
-  Param,
   Post,
-  Put,
   Query,
-  ParseIntPipe,
-  ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiParam } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { DeliveryHistoryService } from './delivery-history.service';
 import { CreateDeliveryHistoryDto } from './dto/create-delivery-history.dto';
-import { UpdateDeliveryHistoryDto } from './dto/update-delivery-history.dto';
 import { FindDeliveryHistoryDto } from './dto/find-delivery-history.dto';
-import { DeliveryHistory } from './delivery-history.entity';
 import { DeliveryHistoryRO } from './ro/delivery-history.ro';
 
 @ApiTags('delivery-history')
@@ -68,16 +62,16 @@ export class DeliveryHistoryController {
     return await this.deliveryService.deliver(dto);
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Update a delivery history record by ID' })
-  @ApiParam({ name: 'id', type: Number, description: 'DeliveryHistory ID' })
-  @ApiResponse({ status: 200, description: 'The delivery history was updated.' })
-  @ApiResponse({ status: 404, description: 'The delivery history could not be found.' })
-  @ApiBody({ type: UpdateDeliveryHistoryDto })
-  async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeliveryHistoryDto)
-  :Promise<DeliveryHistoryRO> {
-    return await this.deliveryService.update(id, dto);
-  }
+  // @Put(':id')
+  // @ApiOperation({ summary: 'Update a delivery history record by ID' })
+  // @ApiParam({ name: 'id', type: Number, description: 'DeliveryHistory ID' })
+  // @ApiResponse({ status: 200, description: 'The delivery history was updated.' })
+  // @ApiResponse({ status: 404, description: 'The delivery history could not be found.' })
+  // @ApiBody({ type: UpdateDeliveryHistoryDto })
+  // async update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateDeliveryHistoryDto)
+  // :Promise<DeliveryHistoryRO> {
+  //   return await this.deliveryService.update(id, dto);
+  // }
 
 
 

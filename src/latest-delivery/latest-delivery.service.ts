@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { LatestDelivery } from '../latest-delivery/latest-delivery.entity';
 import { StoreService } from '../store/store.service'
+import { LatestDeliveryRelation } from 'src/common/enums/relations.enum';
 
 
 @Injectable()
@@ -13,22 +14,23 @@ export class LatestDeliveryService {
         private readonly StoreService: StoreService,
     ) { }
 
-    async findLatestDeliveryOfThisStore(storeIdPK: number): Promise<LatestDelivery | null> {
+    async fetchLatestDeliveryOfThisStore(storeIdPK: number, relations: LatestDeliveryRelation[] = [LatestDeliveryRelation.STORE])
+    : Promise<LatestDelivery | null> {
         
         const latestDelivery = await this.latestDeliveryRepository.findOne({
             where: { store: { id: storeIdPK } },
-            relations: ['store'],
+            relations: relations,
         });
         return latestDelivery;
     }
 
     async checkDeliverable(storeId: string): Promise<boolean> {
-        const store = await this.StoreService.findStoreByStoreId(storeId);
+        const store = await this.StoreService.fetchStoreByStoreId(storeId);
         if (!store) {
             throw new NotFoundException(`Store ${storeId} not found`)
         }
 
-        const latestDelivery = await this.findLatestDeliveryOfThisStore(store.id);
+        const latestDelivery = await this.fetchLatestDeliveryOfThisStore(store.id);
 
         // NO RECORD IN HISTORY -> DELIVERABLE
         if (latestDelivery === null) {
@@ -49,10 +51,9 @@ export class LatestDeliveryService {
     }
 
     async upsertLatestDelivery(data: LatestDelivery): Promise<LatestDelivery> {
-        const existing = await this.latestDeliveryRepository.findOne({
-            where: { store: { id: data.storeIdPK } },
-            relations: ['store'],
-        });
+        const storeIdPk = data.storeIdPK;
+
+        const existing = await this.fetchLatestDeliveryOfThisStore(storeIdPk);
 
         if (existing) {
             // Update existing record

@@ -1,4 +1,4 @@
-import { IsString, IsIn, IsOptional, IsNumber } from 'class-validator';
+import { IsString, IsIn, IsOptional, IsNumber, IsUUID, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateStoreDto {
@@ -22,11 +22,12 @@ export class CreateStoreDto {
   @IsIn(['group', 'shop'])
   storeType: string;
 
-//   @ApiProperty({ example: 1, description: 'Admin ID who manages this store' })
-//   @IsNumber()
-//   adminId: number;
+  @ApiProperty({ example: '1a02d1e7-8f7d-4494-b440-365ff99374d0', description: 'UUID of Admin who manages this store' })
+  @IsUUID('4', { message: 'Provided ID is not a valid UUID v4' })
+  adminId: string;
 
-  @ApiPropertyOptional({ example: 2, description: 'Parent group store ID if applicable' })
+  @ApiPropertyOptional({ example: '1a02d1e7-8f7d-4494-b440-365ff99374d0', description: 'Parent group store ID if applicable' })
+  @IsUUID('4', { message: 'Provided ID is not a valid UUID v4' })
   @IsOptional()
-  parentGroupId?: number;
+  parentGroupStoreId?: string;
 }

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, Index } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Store } from '../store/store.entity';
 
 @Entity('admin')
@@ -19,4 +19,7 @@ export class Admin {
     eager: false
   })
   stores: Store[];
+
+  @Column({type:'boolean',default:true})
+  isActive: boolean;
 }

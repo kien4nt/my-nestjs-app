@@ -1,10 +1,11 @@
-import { Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Store } from './store.entity';
-import { CreateStoreDto } from './dto/create-store.dto';
-import { v4 as uuidv4 } from 'uuid';
 import { StoreRelation } from 'src/common/enums/relations.enum';
+import { plainToInstance } from 'class-transformer';
+import { StoreRO } from './ro/store.ro';
+import { StoreType } from 'src/common/enums/store-type.enum';
 
 @Injectable()
 export class StoreService {
@@ -13,34 +14,45 @@ export class StoreService {
     private storeRepository: Repository<Store>,
   ) { }
 
-  
+
   //Find All Stores
-  async findAllStores(storeRelations: StoreRelation[] = []): Promise<Store[]> {
-    return await this.storeRepository.find({relations:storeRelations});
+  async findAllStores(storeRelations: StoreRelation[] = []): Promise<StoreRO[]> {
+    const stores = await this.fetchAllStores(storeRelations);
+    if (!stores || !stores.length) {
+      throw new NotFoundException('No stores found.');
+    }
+    return stores.map(store => this.mapEntityToResponseObject(store));
   }
 
+  async fetchAllStores(storeRelations: StoreRelation[] = []): Promise<Store[]> {
+    return await this.storeRepository.find({ relations: storeRelations });
+  }
 
   //Find A Store By its Display Id
-  async findStoreByStoreId(storeId: string, storeRelations: StoreRelation[] = []): Promise<Store> {
-    const store = await this.storeRepository.findOne({
-      where: { storeId },
-      relations: storeRelations,
-    });
+  async findStoreByStoreId(storeId: string, storeRelations: StoreRelation[] = []): Promise<StoreRO> {
+    const store = await this.fetchStoreByStoreId(storeId, storeRelations);
     if (!store) {
       throw new NotFoundException(`Store ${storeId} not found.`);
     }
-    return store;
+    return this.mapEntityToResponseObject(store);
+  }
+
+  async fetchStoreByStoreId(storeId: string, storeRelations: StoreRelation[] = []): Promise<Store | null> {
+    return await this.storeRepository.findOne({
+      where: { storeId },
+      relations: storeRelations,
+    });
   }
 
 
-   //Find Stores By a list of storeIds
-  async findStoresByStoreIdList(storeIdList: string[],storeRelations: StoreRelation[] = []): Promise<Store[]> {
+  //Find Stores By a list of storeIds
+  async fetchStoresByStoreIdList(storeIdList: string[], storeRelations: StoreRelation[] = []): Promise<Store[]> {
     const stores = await this.storeRepository.find({
-        where: {
-          storeId: In(storeIdList),
-        },
-        relations: storeRelations
-      });
+      where: {
+        storeId: In(storeIdList),
+      },
+      relations: storeRelations
+    });
 
     if (!stores?.length) {
       throw new NotFoundException(`Found no store from the provided storeIds.`);
@@ -49,63 +61,72 @@ export class StoreService {
   }
 
   //Find Stores with type 'group'
-  async filterGroupOnlyList(storeRelations: StoreRelation[] = []): Promise<Store[]> {
+  async findAllGroups(storeRelations: StoreRelation[] = []): Promise<StoreRO[]> {
+    const groups = await this.fetchGroupOnly(storeRelations);
+    if (!groups || !groups.length) {
+      throw new NotFoundException('No groups found.');
+    }
+    return groups.map(group => this.mapEntityToResponseObject(group));
+  }
+
+  async fetchGroupOnly(storeRelations: StoreRelation[] = []): Promise<Store[]> {
     return await this.storeRepository.find({
-      where: { storeType: 'group' },
+      where: { storeType: StoreType.GROUP },
       relations: storeRelations
     });
   }
 
   //Find Shops Managed By This Group
-  async findChildShopsOfThisGroup(storeId: string,storeRelations: StoreRelation[] = [StoreRelation.PARENT_GROUP]): Promise<Store[]> {
-    const group = await this.findStoreByStoreId(storeId);
+  async findChildShopsOfThisGroup(
+    storeId: string,
+    storeRelations: StoreRelation[] = [StoreRelation.PARENT_GROUP])
+    : Promise<StoreRO[]> {
+    const shops = await this.fetchChildShopsOfThisGroup(storeId, storeRelations);
+    if (!shops || !shops.length) {
+      throw new NotFoundException(`No shops found for group ${storeId}.`);
+    }
+    return shops.map(shop => this.mapEntityToResponseObject(shop));
+  }
+
+  async fetchChildShopsOfThisGroup(
+    storeId: string,
+    storeRelations: StoreRelation[] = [StoreRelation.PARENT_GROUP])
+    : Promise<Store[]> {
+    const group = await this.fetchStoreByStoreId(storeId);
+    if (!group || group.storeType !== StoreType.GROUP) {
+      throw new BadRequestException(`Store ${storeId} is not an available group.`);
+    }
     return await this.storeRepository.find({
       where: { parentGroup: { id: group.id } },
       relations: storeRelations,
     });
-  }
-
-  //Find Stores Under The Same Admin As This Group
-  async findStoresUnderTheSameAdminAsThisGroup(storeId: string,storeRelations: StoreRelation[] = []): Promise<Store[]> {
-    const group = await this.findStoreByStoreId(storeId,[StoreRelation.ADMIN]);
-
-    const stores = await this.storeRepository.find({
-      where: { admin: { id: group.admin.id } },
-      relations: storeRelations
-    });
-    return stores;
 
   }
 
-  // Create Store with UUID retry logic
-  async createStoreWithRetry(storeData: CreateStoreDto, maxRetries = 5): Promise<Store> {
-    let attempts = 0;
-    while (attempts < maxRetries) {
-      attempts++;
+  
 
-      try {
-        // Generate new UUID for storeId
-        const store = this.storeRepository.create({
-          ...storeData,
-          storeId: uuidv4(),
-          storeNameCode: storeData.storeName + storeData.storeCode,
-        });
-
-        return await this.storeRepository.save(store);
-      } catch (error) {
-        // Check if unique violation on storeId UUID column
-        if (error.code === '23505' && error.detail && error.detail.includes('storeId')) {
-          // UUID collision detected, retry
-          console.warn(`UUID collision detected on attempt ${attempts}, retrying...`);
-          continue;
-        } else {
-          // Other errors bubble up
-          throw new InternalServerErrorException(error.message);
-        }
+  mapEntityToResponseObject(store: Store): StoreRO {
+    return plainToInstance(
+      StoreRO, store,
+      {
+        excludeExtraneousValues: true,
       }
-    }
-    throw new InternalServerErrorException('Failed to create Store after multiple UUID retries.');
+    );
   }
+
+  // //Find Stores Under The Same Admin As This Group
+  // async findStoresUnderTheSameAdminAsThisGroup(storeId: string, storeRelations: StoreRelation[] = []): Promise<Store[]> {
+  //   const group = await this.findStoreByStoreId(storeId, [StoreRelation.ADMIN]);
+  //   if(group.storeType !== StoreType.GROUP) {
+  //     throw new BadRequestException(`Store ${storeId} is not a group.`);
+  //   }
+  //   const stores = await this.storeRepository.find({
+  //     where: { admin: { id: group.admin.id } },
+  //     relations: storeRelations
+  //   });
+  //   return stores;
+
+  // }
 
 }
 
