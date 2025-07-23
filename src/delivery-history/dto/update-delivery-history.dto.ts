@@ -1,18 +1,14 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import {
     IsBoolean,
     IsDateString,
     IsEnum,
-    IsNotEmpty,
-    IsNumber,
-    IsObject,
     IsOptional,
     IsString,
     IsUUID,
     ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ErrorDetail } from '../../common/interfaces/error-detail.interface';
 
 export class UpdateDeliveryHistoryDto {
     @ApiPropertyOptional({

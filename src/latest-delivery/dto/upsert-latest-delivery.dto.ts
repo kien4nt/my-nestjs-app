@@ -3,8 +3,6 @@ import {
   IsBoolean,
   IsDateString,
   IsEnum,
-  IsNotEmpty,
-  IsNumber,
   IsObject,
   IsOptional,
   ValidateNested

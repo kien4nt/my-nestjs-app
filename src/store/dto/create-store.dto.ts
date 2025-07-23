@@ -1,6 +1,5 @@
 import { IsString, IsIn, IsOptional, IsNumber, IsUUID, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { StoreType } from 'src/common/enums/store-type.enum';
 
 export class CreateStoreDto {
   @ApiProperty({ example: 'Main Store', description: 'Name of the store for authentication' })
