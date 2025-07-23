@@ -24,6 +24,10 @@ export class StoreRO {
   parentGroupStoreId: string;
 
   @Expose()
+  @Transform(({ obj }) => obj.admin ? obj.admin.adminId : undefined)
+  adminId: string;
+
+  @Expose()
   isActive: boolean;
 }
 
