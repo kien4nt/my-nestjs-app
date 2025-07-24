@@ -15,7 +15,7 @@ async function seedDeliveryVariant() {
     const allStores = await storeRepo.find({ relations: ['admin', 'latestDelivery', 'childShops'] });
     const deliveryHistories: DeliveryHistory[] = [];
     const batchSize = 100;
-    const numberOfRecordsToInsert = 100000;
+    const numberOfRecordsToInsert = 10000;
     let totalDeliveries = await deliveryRepo.count()
 
     while (totalDeliveries < numberOfRecordsToInsert) {

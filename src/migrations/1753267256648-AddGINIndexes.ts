@@ -1,10 +1,9 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddGINIndexAfter1KRecords1749795955516 implements MigrationInterface {
-    name = 'AddGINIndexAfter1KRecords1749795955516'
+export class AddGINIndexes1753267256648 implements MigrationInterface {
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`CREATE INDEX "IDX_5fd62bf6ae9f2ce91a21e36b0a" ON "delivery_history" ("receiverId") `);
+        
         await queryRunner.query(`
             DO $$
             BEGIN
@@ -13,7 +12,7 @@ export class AddGINIndexAfter1KRecords1749795955516 implements MigrationInterfac
                     WHERE c.relname = 'IDX_delivery_history_receiverList_gin'
                 ) THEN
                     CREATE INDEX "IDX_delivery_history_receiverList_gin" 
-                    ON "delivery_history" USING GIN ("receiverList");
+                    ON delivery_history USING GIN ("receiverList");
                 END IF;
             END
             $$;
@@ -32,18 +31,21 @@ export class AddGINIndexAfter1KRecords1749795955516 implements MigrationInterfac
             END
             $$;
         `);
+
+
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        
-        await queryRunner.query(`DROP INDEX "public"."IDX_5fd62bf6ae9f2ce91a21e36b0a"`);
+       
         await queryRunner.query(
             `DROP INDEX IF EXISTS "IDX_delivery_history_receiverList_gin";`
         );
         await queryRunner.query(
             `DROP INDEX IF EXISTS "IDX_latest_delivery_receiverList_gin";`
         );
-    }
 
+        
+
+    }
 
 }
