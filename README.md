@@ -15,7 +15,7 @@ This guide walks you through deploying and running the NestJS app on an **Amazon
 - A running AWS RDS instance which:
     + Contained in the private subnet from them same AZ as the EC2 instance
     + Has RDS CA authorization configured (ap-southeast-1-bundle.pem)
-    + Allow only connection from the EC2 instance
+    + Allows only connection from the EC2 instance
 
 - You need to have the private access key file of your ec2 instance stored locally (ec2-key.pem)
 
