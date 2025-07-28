@@ -1,13 +1,35 @@
-#  My NestJS App Deployment Guide (EC2 + RDS Setup)
+# NestJS App Deployment Guide (EC2 + RDS Setup)
 
 This guide walks you through deploying and running the NestJS app on an **Amazon EC2** instance and connecting it to **Amazon RDS**.
+
+
+## Requirements
+- A running AWS VPC instance with at least 1 AZ that has both private and public subnets in Asia Pacific (Singapore) region
+
+- A running AWS EC2 instance which:
+    + Contained in a public subnet of the VPC instance
+    + Has auto-assigned public IP configured
+    + Allows SSH connection from your IP
+    + Allows public connection via port 3000
+
+- A running AWS RDS instance which:
+    + Contained in the private subnet from them same AZ as the EC2 instance
+    + Has RDS CA authorization configured (ap-southeast-1-bundle.pem)
+    + Allow only connection from the EC2 instance
+
+- You need to have the private access key file of your ec2 instance stored locally (ec2-key.pem)
+
+## Download RDS CA Certificate from AWS
+Go to this URL and download the certificate bundle for Asia Pacific (Singapore) (ap-southeast-1-bundle.pem) :
+https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html#UsingWithRDS.SSL.CertificatesAllRegions
+
 
 ---
 
 ##  Upload RDS CA Certificate to EC2
 
 ```bash
-scp -i /path/to/key.pem /path/to/local/file ec2-user@<ec2-public-ip>:/home/ec2-user/
+scp -i /path/to/ec2-key.pem /path/to/ap-southeast-1-bundle.pem ec2-user@<ec2-public-ip>:/home/ec2-user/
 ```
 
 ---
@@ -15,7 +37,7 @@ scp -i /path/to/key.pem /path/to/local/file ec2-user@<ec2-public-ip>:/home/ec2-u
 ##  SSH into the EC2 Instance
 
 ```bash
-ssh -i /path/to/key.pem ec2-user@<ec2-public-ip>
+ssh -i /path/to/ec2-key.pem ec2-user@<ec2-public-ip>
 ```
 
 - Type `yes` to accept the host fingerprint if prompted.
