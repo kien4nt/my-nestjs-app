@@ -52,7 +52,7 @@ async function seedStores() {
     for (const admin of admins) {
       groupsByAdmin[admin.id] = [];
 
-      // Create 3 group stores per admin
+      // Create 15 groups per admin
       for (let i = 0; i < 15; i++) {
         const storename = await getUnique_storename(); // human-readable
         const storeName = faker.internet.domainWord().toLowerCase() + `-group-${i}`; // lowercase, no spaces
@@ -81,16 +81,22 @@ async function seedStores() {
         groupsByAdmin[groupStore.admin.id].push(groupStore);
     }
 
-    // Now create 7 shops per admin
+    // Now create 35 shops per admin
     for (const admin of admins) {
       const availableGroups = groupsByAdmin[admin.id] || [];
+
+      if (availableGroups.length === 0) {
+        console.warn(`No groups available for admin ${admin.id}. Skipping shop creation.`);
+        continue;
+      }
 
       for (let i = 0; i < 35; i++) {
         const storename = await getUnique_storename(); // human-readable 
         const storeName = faker.internet.domainWord().toLowerCase() + `-shop-${i}`; // lowercase, no spaces
 
         const storeCode = await getUnique_storeCode();
-        const group = faker.helpers.maybe(() => faker.helpers.arrayElement(availableGroups), { probability: 0.7 });
+        const group = faker.helpers.arrayElement(availableGroups);
+
 
         const shopStore = storeRepo.create({
           storeId: uuidv4(),
