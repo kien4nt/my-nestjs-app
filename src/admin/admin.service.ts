@@ -62,7 +62,7 @@ export class AdminService {
 
   //Caller method to find admin by adminId
   async findAdminByAdminId(adminId: string): Promise<AdminRO> {
-    const admin = await this.fecthAdminDataByAdminId(adminId);
+    const admin = await this.fetchAdminDataByAdminId(adminId);
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found`);
     }
@@ -70,7 +70,7 @@ export class AdminService {
   }
 
   //Fetch the admin data by adminId
-  async fecthAdminDataByAdminId(adminId: string): Promise<Admin | null> {
+  async fetchAdminDataByAdminId(adminId: string): Promise<Admin | null> {
     return await this.adminRepository.findOne({ where: { adminId } });
   }
 
@@ -89,7 +89,7 @@ export class AdminService {
 
   //Fetch stores by adminId
   async fetchStoresByAdminId(adminId:string, relations:StoreRelation[] = []): Promise<Store[]>{
-    const admin = await this.fecthAdminDataByAdminId(adminId);
+    const admin = await this.fetchAdminDataByAdminId(adminId);
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found`);
     }
@@ -137,7 +137,7 @@ export class AdminService {
   }
 
   async update(adminId: string, updateData: UpdateAdminDto): Promise<AdminRO> {
-    const admin = await this.fecthAdminDataByAdminId(adminId);
+    const admin = await this.fetchAdminDataByAdminId(adminId);
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found`);
     }
@@ -150,7 +150,7 @@ export class AdminService {
   }
 
   async deactivate(adminId: string): Promise<AdminRO> {
-    const admin = await this.fecthAdminDataByAdminId(adminId);
+    const admin = await this.fetchAdminDataByAdminId(adminId);
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found`);
     }
@@ -165,7 +165,7 @@ export class AdminService {
   // Create Store with UUID retry logic
   async createStoreWithRetry(storeData: CreateStoreDto, maxRetries = 5): Promise<StoreRO> {
     const adminId = storeData.adminId;
-    const admin = await this.fecthAdminDataByAdminId(adminId);
+    const admin = await this.fetchAdminDataByAdminId(adminId);
     if (!admin) {
       throw new NotFoundException(`Admin ${adminId} not found.`);
     }
