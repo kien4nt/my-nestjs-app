@@ -4,6 +4,8 @@ import * as fs from 'fs';
 
 dotenv.config({ path: 'development.env' });
 
+const useSSL = process.env.USE_SSL === 'true';
+
 export default new DataSource({
   type: 'postgres',
   host: process.env.DATABASE_HOST,
@@ -11,11 +13,15 @@ export default new DataSource({
   username: process.env.DATABASE_USERNAME,
   password: process.env.DATABASE_PASSWORD,
   database: process.env.DATABASE_NAME,
-  entities: ['src/**/*.entity.ts'],
-  migrations: ['src/migrations/*.ts'],
+  entities: ['src/**/*.entity.{ts,js}'],
+  migrations: ['src/migrations/*.{ts,js}'],
   migrationsTableName: 'migrations',
-   ssl: {
-    ca: fs.readFileSync(process.env.RDS_CA_PATH 
-      || '/home/ec2-user/ap-southeast-1-bundle.pem').toString(),
-  },
+  ...(useSSL && {
+    ssl: {
+      ca: fs.readFileSync(
+        process.env.RDS_CA_PATH || '/home/ec2-user/ap-southeast-1-bundle.pem'
+      ).toString(),
+    },
+  }),
+ 
 });

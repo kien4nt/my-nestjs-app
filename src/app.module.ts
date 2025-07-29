@@ -20,26 +20,35 @@ import { ScheduleModule } from '@nestjs/schedule';
     // Configure TypeORM with PostgreSQL
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule], // Import ConfigModule to inject ConfigService
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get<string>('DATABASE_HOST'),
-        port: Number(configService.get<string>('DATABASE_PORT')),
-        username: configService.get<string>('DATABASE_USERNAME'),
-        password: configService.get<string>('DATABASE_PASSWORD'),
-        database: configService.get<string>('DATABASE_NAME'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        migrations: [__dirname + '/migrations/*{.ts,.js}'],
-        synchronize: false,         // Turn off sync!
-        migrationsRun: false,        // Auto-run migrations on app start
-        logging: false,             //Show queries
-        extra:{
-          max: 20, // Set maximum number of connections in the pool
-          ssl:{
-            ca: fs.readFileSync(configService.get<string>('RDS_CA_PATH')
-            || '/home/ec2-user/ap-southeast-1-bundle.pem').toString(),
-          }
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+
+        const useSSL = configService.get<string>('USE_SSL') === 'true'; // Check if SSL is enabled
+
+        return {
+          type: 'postgres',
+          host: configService.get<string>('DATABASE_HOST'),
+          port: Number(configService.get<string>('DATABASE_PORT')),
+          username: configService.get<string>('DATABASE_USERNAME'),
+          password: configService.get<string>('DATABASE_PASSWORD'),
+          database: configService.get<string>('DATABASE_NAME'),
+          entities: [__dirname + '/**/*.entity{.ts,.js}'],
+          migrations: [__dirname + '/migrations/*{.ts,.js}'],
+          synchronize: false,         // Turn off sync!
+          migrationsRun: false,        // Auto-run migrations on app start
+          logging: false,             //Show queries
+          extra: {
+            // Set maximum number of connections in the pool
+            max: 20,
+            ...(useSSL && {
+              ssl: {
+                ca: fs.readFileSync(
+                  configService.get<string>('RDS_CA_PATH') || '/home/ec2-user/ap-southeast-1-bundle.pem',
+                ).toString(),
+              },
+            }),
+          },
+        }
+      },
       inject: [ConfigService], // Inject ConfigService to use in useFactory
     }),
     ScheduleModule.forRoot(), // Import ScheduleModule for scheduling tasks
