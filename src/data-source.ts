@@ -2,10 +2,13 @@ import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 
+//Determine the environment and load the corresponding .env file
 const envFilePath = `${process.env.NODE_ENV || 'development'}.env`;
+dotenv.config({ path: envFilePath });
+
+// Check if SSL is enabled (required .env file loaded)
 const useSSL = process.env.USE_SSL === 'true';
 
-dotenv.config({ path: envFilePath });
 
 export default new DataSource({
   type: 'postgres',
@@ -20,9 +23,8 @@ export default new DataSource({
   ...(useSSL && {
     ssl: {
       ca: fs.readFileSync(
-        process.env.RDS_CA_PATH || '/home/ec2-user/ap-southeast-1-bundle.pem'
+        process.env.RDS_CA_PATH || '/home/ec2-user/ap-southeast-1-bundle.pem',
       ).toString(),
     },
   }),
- 
 });
