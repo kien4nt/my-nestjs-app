@@ -30,8 +30,8 @@ export class LatestDelivery {
     @Column({ type: 'boolean' })
     transactionStatus: boolean;
 
-    @Column({ type: 'jsonb' , nullable: true })
-    receiverList: object;
+    @Column({ type: 'jsonb', nullable: true, default: [] })
+    receiverList: string[];
 
     @Column({ type: 'jsonb', nullable: true, default: [] })
     errors: ErrorDetail[];
