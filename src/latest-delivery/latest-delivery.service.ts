@@ -11,7 +11,7 @@ export class LatestDeliveryService {
     constructor(
         @InjectRepository(LatestDelivery)
         private latestDeliveryRepository: Repository<LatestDelivery>,
-        private readonly StoreService: StoreService,
+        private readonly storeService: StoreService,
     ) { }
 
     async fetchLatestDeliveryOfThisStore(storeIdPK: number, relations: LatestDeliveryRelation[] = [LatestDeliveryRelation.STORE])
@@ -25,28 +25,17 @@ export class LatestDeliveryService {
     }
 
     async checkDeliverable(storeId: string): Promise<boolean> {
-        const store = await this.StoreService.fetchStoreByStoreId(storeId);
+        const store = await this.storeService.fetchStoreByStoreId(storeId);
         if (!store) {
             throw new NotFoundException(`Store ${storeId} not found`)
         }
 
         const latestDelivery = await this.fetchLatestDeliveryOfThisStore(store.id);
 
-        // NO RECORD IN HISTORY -> DELIVERABLE
-        if (latestDelivery === null) {
-            return true;
-        }
-
-        // TRANSACTION IN-PROCESS -> NOT DELIVERABLE
-        if (latestDelivery.transactionStatus === true) {
-            return false;
-        }
-        // TRANSACTION COMPLETED -> DELIVERABLE
-        else if (latestDelivery.transactionStatus === false) {
-            return true;
-        }
-        // UNEXPECTED ERROR -> NOT DELIVERABLE
-        return false;
+        // If latest delivery is null (no delivery recorded) or transactionStatus is false (not in-process),
+        // delivery can proceed
+        // Otherwise, delivery should be canceled
+        return latestDelivery === null || latestDelivery.transactionStatus === false;
 
     }
 
