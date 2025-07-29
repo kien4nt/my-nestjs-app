@@ -134,6 +134,48 @@ NODE_ENV=filename npm run mg:run
 
 ---
 
+##  Seeding
+
+###  Configuration
+Open `seed-delivery.ts`:
+
+- **Windows:**
+
+```powershell
+notepad seeds/seed-delivery.ts
+```
+
+- **Linux:**
+
+```bash
+nano seeds/seed-delivery.ts
+```
+
+Adjust the number of seeding records:
+```ts
+const numberOfRecordsToInsert = 100000; // Adjust as needed
+```
+
+###  Run the seeding
+
+- **Windows:**
+
+```powershell
+$env:NODE_ENV="filename"; npx ts-node .\seeds\seed-admin.ts
+$env:NODE_ENV="filename"; npx ts-node .\seeds\seed-store.ts
+$env:NODE_ENV="filename"; npx ts-node .\seeds\seed-delivery.ts
+```
+
+- **Linux:**
+
+```bash
+NODE_ENV=filename npx ts-node .\seeds\seed-admin.ts
+NODE_ENV=filename npx ts-node .\seeds\seed-store.ts
+NODE_ENV=filename npx ts-node .\seeds\seed-delivery.ts
+```
+
+---
+
 ##  Build and Run the App with `filename.env`
 
 - **Windows:**
