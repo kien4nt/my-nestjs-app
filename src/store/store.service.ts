@@ -29,7 +29,10 @@ export class StoreService {
   }
 
   //Find A Store By its Display Id
-  async findStoreByStoreId(storeId: string, storeRelations: StoreRelation[] = []): Promise<StoreRO> {
+  async findStoreByStoreId(
+    storeId: string, storeRelations: StoreRelation[] = [StoreRelation.PARENT_GROUP, StoreRelation.CHILD_SHOPS]
+  )
+  : Promise<StoreRO> {
     const store = await this.fetchStoreByStoreId(storeId, storeRelations);
     if (!store) {
       throw new NotFoundException(`Store ${storeId} not found.`);
@@ -114,19 +117,7 @@ export class StoreService {
     );
   }
 
-  // //Find Stores Under The Same Admin As This Group
-  // async findStoresUnderTheSameAdminAsThisGroup(storeId: string, storeRelations: StoreRelation[] = []): Promise<Store[]> {
-  //   const group = await this.findStoreByStoreId(storeId, [StoreRelation.ADMIN]);
-  //   if(group.storeType !== StoreType.GROUP) {
-  //     throw new BadRequestException(`Store ${storeId} is not a group.`);
-  //   }
-  //   const stores = await this.storeRepository.find({
-  //     where: { admin: { id: group.admin.id } },
-  //     relations: storeRelations
-  //   });
-  //   return stores;
-
-  // }
+ 
 
 }
 
