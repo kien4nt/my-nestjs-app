@@ -2,9 +2,10 @@ import * as dotenv from 'dotenv';
 import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 
-dotenv.config({ path: 'development.env' });
-
+const envFilePath = `${process.env.NODE_ENV || 'development'}.env`;
 const useSSL = process.env.USE_SSL === 'true';
+
+dotenv.config({ path: envFilePath });
 
 export default new DataSource({
   type: 'postgres',

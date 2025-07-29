@@ -15,7 +15,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     // Load environment variables
     ConfigModule.forRoot({
       isGlobal: true, // Makes ConfigModule available globally
-      envFilePath: 'development.env',
+      envFilePath: `${process.env.NODE_ENV || 'development'}.env`,
+
     }),
     // Configure TypeORM with PostgreSQL
     TypeOrmModule.forRootAsync({
